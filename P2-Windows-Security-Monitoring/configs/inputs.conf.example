@@ -1,0 +1,36 @@
+# ==============================================================================
+# File: configs/inputs.conf.example
+# Project: P2 — Windows Security Monitoring with Splunk
+# Purpose: Sample inputs configuration for Splunk Universal Forwarder on Windows 11
+# Status: REFERENCE / EXAMPLE ONLY (NOT ACTIVE)
+# ==============================================================================
+
+# Ingest Windows Security Event Log (Authentication, Account Changes, Privileges)
+[WinEventLog://Security]
+disabled = 0
+index = windows
+renderXml = false
+
+# Ingest Windows System Event Log (Service Installations, System Events)
+[WinEventLog://System]
+disabled = 0
+index = windows
+renderXml = false
+
+# Ingest Windows Application Event Log
+[WinEventLog://Application]
+disabled = 0
+index = windows
+renderXml = false
+
+# Ingest PowerShell Operational Log (Script Block Logging - Event ID 4104)
+[WinEventLog://Microsoft-Windows-PowerShell/Operational]
+disabled = 0
+index = windows
+renderXml = false
+
+# (Optional Extension) Ingest Sysmon Operational Log
+# [WinEventLog://Microsoft-Windows-Sysmon/Operational]
+# disabled = 0
+# index = windows
+# renderXml = false

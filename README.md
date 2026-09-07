@@ -134,7 +134,7 @@ The complete portfolio spans 10 structured projects demonstrating sequential pro
 | ID | Project Name | Scope & Core Focus | Status |
 |:---:|---|---|:---:|
 | **P1** | **Splunk SOC Home Lab & Log Analysis** | Foundational VirtualBox lab setup, Splunk Enterprise installation, Universal Forwarder deployment, basic log ingestion, and SPL baseline exploration. | 🟡 In Progress |
-| **P2** | **Windows Security Monitoring** | Windows Event Log auditing, Sysmon telemetry ingestion, process creation tracking, and account logon anomaly detection. | ⚪ Planned |
+| **P2** | **[Windows Security Monitoring](P2-Windows-Security-Monitoring/)** | Windows Event Log auditing, Sysmon telemetry ingestion, process creation tracking, and account logon anomaly detection. | 🟡 In Progress |
 | **P3** | **Linux Security Monitoring** | Ubuntu/Debian logging (`/var/log/auth.log`, `syslog`), sudo abuse tracking, SSH session auditing, and service monitoring. | ⚪ Planned |
 | **P4** | **Brute-Force Detection & Investigation** | Detecting failed logon spikes, credential stuffing, account lockout patterns, and automated Kali Linux Hydra/Medusa simulations. | ⚪ Planned |
 | **P5** | **Network Threat Detection** | Firewall and network log analysis, port scanning identification, beaconing detection, and unusual outbound connections. | ⚪ Planned |
@@ -167,7 +167,7 @@ Each project in the portfolio maintains its own dedicated repository containing 
 | Project ID | Project Title | Dedicated Repository Link |
 |:---:|---|:---:|
 | **P1** | Splunk SOC Home Lab & Log Analysis | [NATTOMR/Log-Monitoring-Analysis-by-using-splunk](https://github.com/NATTOMR/Log-Monitoring-Analysis-by-using-splunk) |
-| **P2** | Windows Security Monitoring | *Planned repository* |
+| **P2** | Windows Security Monitoring | [P2-Windows-Security-Monitoring/](P2-Windows-Security-Monitoring/) |
 | **P3** | Linux Security Monitoring | *Planned repository* |
 | **P4** | Brute-Force Detection & Investigation | *Planned repository* |
 | **P5** | Network Threat Detection | *Planned repository* |

@@ -1,0 +1,19 @@
+# ==============================================================================
+# File: configs/props.conf.example
+# Project: P2 — Windows Security Monitoring with Splunk
+# Purpose: Sample parsing configuration for Windows Event Logs
+# Status: REFERENCE / EXAMPLE ONLY (NOT ACTIVE)
+# ==============================================================================
+
+[source::WinEventLog:Security]
+SHOULD_LINEMERGE = false
+MAX_TIMESTAMP_LOOKAHEAD = 32
+TRUNCATE = 100000
+
+[source::WinEventLog:System]
+SHOULD_LINEMERGE = false
+MAX_TIMESTAMP_LOOKAHEAD = 32
+
+[source::WinEventLog:Microsoft-Windows-PowerShell/Operational]
+SHOULD_LINEMERGE = false
+MAX_TIMESTAMP_LOOKAHEAD = 32

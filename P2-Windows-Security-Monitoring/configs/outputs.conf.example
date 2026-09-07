@@ -1,0 +1,17 @@
+# ==============================================================================
+# File: configs/outputs.conf.example
+# Project: P2 — Windows Security Monitoring with Splunk
+# Purpose: Sample outputs configuration for Splunk Universal Forwarder
+# Status: REFERENCE / EXAMPLE ONLY (NOT ACTIVE)
+# ==============================================================================
+
+[tcpout]
+defaultGroup = default-autolb-group
+
+[tcpout:default-autolb-group]
+# Replace <SPLUNK_INDEXER_IP> with the internal IP address of your Splunk Enterprise host
+server = <SPLUNK_INDEXER_IP>:9997
+
+# Optional: Enable SSL encryption for production-grade forwarding
+# sslCertPath = $SPLUNK_HOME/etc/auth/server.pem
+# sslRootCAPath = $SPLUNK_HOME/etc/auth/cacert.pem
