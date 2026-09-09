@@ -1,0 +1,120 @@
+<!--
+  ==============================================================================
+  Project: P2 — Windows Security Monitoring with Splunk
+  File: config/windows/sysmonconfig.xml
+  Purpose: Sysmon modular configuration baseline for high-fidelity endpoint detection
+  Target: Windows 11 Endpoint (Sysmon64 v15+)
+  Installation: Sysmon64.exe -i sysmonconfig.xml
+  Update:       Sysmon64.exe -c sysmonconfig.xml
+  ==============================================================================
+-->
+<Sysmon schemaversion="4.90">
+  <!-- Global Hash Configuration -->
+  <HashAlgorithms>SHA256,MD5</HashAlgorithms>
+  <CheckRevocation/>
+
+  <EventFiltering>
+    <!-- EVENT ID 1: Process Creation -->
+    <!-- Captures parent process, full command line, hashes, and user context -->
+    <RuleGroup name="ProcessCreation" groupRelation="or">
+      <ProcessCreate onmatch="exclude">
+        <!-- Filter out high-frequency benign system binaries without arguments -->
+        <!-- <Image condition="is">C:\Windows\System32\wbem\WmiPrvSE.exe</Image> -->
+      </ProcessCreate>
+    </RuleGroup>
+
+    <!-- EVENT ID 3: Network Connection Detected -->
+    <!-- Captures outbound network communication, beaconing, and C2 activity -->
+    <RuleGroup name="NetworkConnections" groupRelation="or">
+      <NetworkConnect onmatch="include">
+        <!-- Monitor suspicious LOLBin outbound network connections -->
+        <Image condition="image">powershell.exe</Image>
+        <Image condition="image">cmd.exe</Image>
+        <Image condition="image">certutil.exe</Image>
+        <Image condition="image">bitsadmin.exe</Image>
+        <Image condition="image">mshta.exe</Image>
+        <Image condition="image">rundll32.exe</Image>
+        <Image condition="image">cscript.exe</Image>
+        <Image condition="image">wscript.exe</Image>
+        <Image condition="image">regsvr32.exe</Image>
+        <Image condition="image">curl.exe</Image>
+      </NetworkConnect>
+    </RuleGroup>
+
+    <!-- EVENT ID 7: Image / DLL Loaded -->
+    <!-- Monitor suspicious unsigned or reflective DLL loads -->
+    <RuleGroup name="ImageLoad" groupRelation="or">
+      <ImageLoad onmatch="include">
+        <ImageLoaded condition="contains">\AppData\Local\Temp\</ImageLoaded>
+        <ImageLoaded condition="contains">\AppData\Roaming\</ImageLoaded>
+      </ImageLoad>
+    </RuleGroup>
+
+    <!-- EVENT ID 8: CreateRemoteThread -->
+    <!-- Detects process injection, DLL injection, and thread hijacking -->
+    <RuleGroup name="ProcessInjection" groupRelation="or">
+      <CreateRemoteThread onmatch="exclude">
+        <SourceImage condition="is">C:\Windows\System32\csrss.exe</SourceImage>
+      </CreateRemoteThread>
+    </RuleGroup>
+
+    <!-- EVENT ID 9: RawAccessRead -->
+    <!-- Detects raw disk access bypassing file system (e.g. NTDS.dit or shadow copy dumping) -->
+    <RuleGroup name="RawDiskAccess" groupRelation="or">
+      <RawAccessRead onmatch="include">
+        <Device condition="contains">\Device\HarddiskVolume</Device>
+      </RawAccessRead>
+    </RuleGroup>
+
+    <!-- EVENT ID 10: ProcessAccess -->
+    <!-- Detects credential theft via LSASS memory dumping (Mimikatz, ProcDump) -->
+    <RuleGroup name="CredentialDumping" groupRelation="or">
+      <ProcessAccess onmatch="include">
+        <TargetImage condition="is">C:\Windows\system32\lsass.exe</TargetImage>
+      </ProcessAccess>
+    </RuleGroup>
+
+    <!-- EVENT ID 11: FileCreate -->
+    <!-- Captures executable and script staging in temp and public paths -->
+    <RuleGroup name="FileCreation" groupRelation="or">
+      <FileCreate onmatch="include">
+        <TargetFilename condition="contains">\AppData\Local\Temp\</TargetFilename>
+        <TargetFilename condition="contains">\Users\Public\</TargetFilename>
+        <TargetFilename condition="contains">\Start Menu\Programs\Startup\</TargetFilename>
+        <TargetFilename condition="end with">.exe</TargetFilename>
+        <TargetFilename condition="end with">.bat</TargetFilename>
+        <TargetFilename condition="end with">.ps1</TargetFilename>
+        <TargetFilename condition="end with">.vbs</TargetFilename>
+      </FileCreate>
+    </RuleGroup>
+
+    <!-- EVENT ID 12/13/14: Registry Event (Object Create, Delete, Value Set) -->
+    <!-- Captures persistence mechanisms (Run keys, services, Winlogon, scheduled tasks) -->
+    <RuleGroup name="RegistryPersistence" groupRelation="or">
+      <RegistryEvent onmatch="include">
+        <TargetObject condition="contains">\CurrentVersion\Run</TargetObject>
+        <TargetObject condition="contains">\CurrentVersion\RunOnce</TargetObject>
+        <TargetObject condition="contains">\Services\</TargetObject>
+        <TargetObject condition="contains">\Windows NT\CurrentVersion\Winlogon</TargetObject>
+        <TargetObject condition="contains">\System\CurrentControlSet\Control\Session Manager</TargetObject>
+      </RegistryEvent>
+    </RuleGroup>
+
+    <!-- EVENT ID 22: DNS Query -->
+    <!-- Captures DNS queries made by endpoint processes -->
+    <RuleGroup name="DnsResolution" groupRelation="or">
+      <DnsQuery onmatch="exclude">
+        <!-- Filter local resolution noise -->
+        <QueryName condition="end with">.local</QueryName>
+        <QueryName condition="end with">.arpa</QueryName>
+      </DnsQuery>
+    </RuleGroup>
+
+    <!-- EVENT ID 25: Process Tampering -->
+    <!-- Captures process herpaderping and image hollowing -->
+    <RuleGroup name="ProcessTampering" groupRelation="or">
+      <ProcessTampering onmatch="include"/>
+    </RuleGroup>
+
+  </EventFiltering>
+</Sysmon>

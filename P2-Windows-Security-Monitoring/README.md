@@ -197,7 +197,7 @@ To ensure engineering integrity, components are strictly tracked by verification
 | **Sysmon Telemetry Ingestion** | ✅ **IMPLEMENTED** | Sysmon Operational channel actively streaming to `index=sysmon`. |
 | **Windows Event Log Ingestion** | ✅ **IMPLEMENTED** | Security, System, and Application logs actively streaming to `index=windows`. |
 | **Configuration & Automation Scripts** | ✅ **IMPLEMENTED** | Modular `config/` templates and `scripts/` automation tools deployed. |
-| **Windows Audit Policy Design** | 🟡 **IN PROGRESS** | Defining required SACLs and GPO/auditpol baseline. |
+| **Windows Audit Policy Design** | ✅ **IMPLEMENTED** | Advanced audit policy, command-line logging (4688), and PowerShell logging (4104) baseline deployed. |
 | **Authentication Monitoring (4624/4625)** | ⚪ **PLANNED** | Failed logon bursts and logon type categorization. |
 | **Account Activity & Creation (4720/4726)** | ⚪ **PLANNED** | User creation, deletion, and group modification tracking. |
 | **Privilege Escalation Telemetry (4672)** | ⚪ **PLANNED** | Special privilege logon and elevation tracking. |
@@ -267,8 +267,12 @@ P2-Windows-Security-Monitoring/
 ├── README.md                            # Project overview, architecture, and roadmap
 ├── config/                              # Production configuration templates
 │   ├── README.md                        # Configuration inventory and deployment instructions
-│   ├── inputs.conf                      # Production inputs for Security, System, App, Sysmon
-│   ├── outputs.conf                     # Production outputs targeting 192.168.100.7:9997
+│   ├── windows/                         # Windows endpoint configurations
+│   │   ├── inputs.conf                  # Core event channel inputs (Security, System, App, Sysmon)
+│   │   ├── outputs.conf                 # Forwarding destination (192.168.100.7:9997)
+│   │   └── sysmonconfig.xml             # Modular Sysmon configuration baseline
+│   ├── inputs.conf                      # Production inputs copy
+│   ├── outputs.conf                     # Production outputs copy
 │   └── indexes.conf                     # Production index definitions for windows & sysmon
 ├── configs/                             # Configuration templates (Reference examples only)
 │   ├── inputs.conf.example              # Example Universal Forwarder input stanzas
@@ -299,6 +303,7 @@ P2-Windows-Security-Monitoring/
 │   ├── README.md                        # Script usage guide and elevation requirements
 │   ├── verify-splunk.ps1                # Automated forwarder, Sysmon, permissions & TCP test
 │   ├── configure-forwarder.ps1          # Idempotent inputs/outputs configuration tool
+│   ├── configure-audit-policy.ps1       # Windows Advanced Audit Policy, CLI & PowerShell logger
 │   └── install-forwarder.ps1            # Automated MSI installation helper
 └── screenshots/                         # Verifiable visual exhibits & evidence (Captured upon verification)
     └── README.md                        # Asset index for verified lab screenshots
