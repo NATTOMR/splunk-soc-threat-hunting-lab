@@ -247,7 +247,7 @@ flowchart TD
 
 ## 📊 P2 Status
 
-### ✅ Completed Tasks (11 Items)
+### ✅ Completed Tasks (18 Items)
 1. **Ubuntu verification** — Ubuntu 24.04.4 LTS (x86_64, `wazuh-server`, `192.168.100.7`) confirmed active and verified.
 2. **Wazuh verification** — `wazuh-manager`, `wazuh-indexer`, `wazuh-dashboard` active; no systemd service failures.
 3. **Windows endpoint verification** — Windows 11 endpoint (`192.168.100.8`) verified with active Wazuh agent and Sysmon64.
@@ -259,24 +259,24 @@ flowchart TD
 9. **Windows-to-Ubuntu connectivity** — Ping to `192.168.100.7` and TCP port 8000 connectivity confirmed from Windows 11.
 10. **Ubuntu firewall configuration** — `ufw` rules configured: 1514/tcp, 1515/tcp, 8000/tcp, and 9997/tcp allowed from `192.168.100.0/24`.
 11. **Splunk receiving port configuration** — Splunk receiver port `9997/tcp` configured and validated on Splunk Enterprise.
+12. **Splunk Universal Forwarder installed** — Splunk Universal Forwarder 10.4.3 installed on Windows 11 (`192.168.100.8`) under `NT SERVICE\SplunkForwarder`.
+13. **Service permissions configured** — `NT SERVICE\SplunkForwarder` added to `Event Log Readers` group.
+14. **outputs.conf configured** — Telemetry stream routed to `192.168.100.7:9997` under group `splunk-enterprise`.
+15. **inputs.conf configured** — `renderXml = true` enabled for Security, System, Application, and `Microsoft-Windows-Sysmon/Operational`.
+16. **Splunk indexes created** — Dedicated storage containers `index=windows` and `index=sysmon` provisioned.
+17. **Live telemetry verified** — Events verified arriving in Splunk (`index=sysmon` and `index=windows`).
+18. **Automation & configuration management** — Deployed `config/` templates, `verify-splunk.ps1`, `configure-forwarder.ps1`, `install-forwarder.ps1`, and `docs/setup.md`.
 
-### 🟡 Next / In Progress Tasks (12 Items)
-1. **Install/configure Splunk Universal Forwarder on Windows 11**
-2. **Configure outputs.conf** (Target: `192.168.100.7:9997`)
-3. **Configure inputs.conf** (Windows Event Logs & Sysmon channels)
-4. **Forward Windows Event Logs** (`WinEventLog:Security`, `System`, `Application`, `PowerShell`)
-5. **Forward Sysmon logs** (`Microsoft-Windows-Sysmon/Operational`)
-6. **Create Splunk indexes** (`index=windows`, `index=sysmon`)
-7. **Verify events arriving in Splunk**
-8. **Build SPL detection searches**
-9. **Create SOC dashboards**
-10. **Create Splunk alerts**
-11. **Perform attack simulations**
-12. **Compare Wazuh vs Splunk detections**
+### 🟡 Next / In Progress Tasks (5 Items)
+1. **Build SPL detection searches** (Auth anomalies, LOLBins, persistence)
+2. **Create SOC dashboards** (Windows security overview & Sysmon monitors)
+3. **Create Splunk alerts** (High-fidelity triggers and thresholding)
+4. **Perform attack simulations** (Adversary emulation scenarios)
+5. **Compare Wazuh vs Splunk detections** (Hybrid SOC correlation)
 
 ### 📈 Completion Metrics
-- **Completed Infrastructure Items:** 11 / 23 tasks (**47.8%**)
-- **Pending Implementation Items:** 12 / 23 tasks (**52.2%**)
+- **Completed Infrastructure Items:** 18 / 23 tasks (**78.3%**)
+- **Pending Implementation Items:** 5 / 23 tasks (**21.7%**)
 
 ---
 

@@ -105,6 +105,26 @@ flowchart LR
     SE --> SOC
 ```
 
+### Lab Configuration (Verified Baseline)
+
+The central lab infrastructure operates across a dedicated NAT Network (`192.168.100.0/24`) connecting the Windows 11 endpoint and Ubuntu Splunk Enterprise indexer:
+
+| Parameter | Windows 11 Endpoint (`192.168.100.8`) | Ubuntu Splunk Enterprise (`192.168.100.7`) |
+|---|---|---|
+| **Role** | Monitored Workstation / Telemetry Source | Central SIEM / Indexer / Search Head |
+| **Active Services** | • `SplunkForwarder` (UF 10.4.3)<br>• `Sysmon64` (Sysmon v15.15) | • `splunkd` (Splunk Enterprise 10.4.3)<br>• `wazuh-manager` |
+| **Service Account** | `NT SERVICE\SplunkForwarder` (`Event Log Readers`) | `splunk` (Dedicated system account) |
+| **Active Ports** | TCP `9997` (Outbound) | TCP `9997` (Receiver), TCP `8000`/`18000` (Web), TCP `8089` |
+| **Event Channels** | Security, System, Application, Sysmon/Operational | Listening socket: `0.0.0.0:9997` |
+| **Splunk Indexes** | Inputs route to `windows` and `sysmon` | Indexed in `index=windows` and `index=sysmon` |
+
+### Configuration Management
+
+All operational forwarder inputs, index definitions, and deployment scripts are version-controlled within the project repository to ensure clean, idempotent, and repeatable deployment:
+- **Configuration Templates:** Stored in [`P2-Windows-Security-Monitoring/config/`](P2-Windows-Security-Monitoring/config/) (`inputs.conf`, `outputs.conf`, `indexes.conf`).
+- **PowerShell Automation:** Stored in [`P2-Windows-Security-Monitoring/scripts/`](P2-Windows-Security-Monitoring/scripts/) (`verify-splunk.ps1`, `configure-forwarder.ps1`, `install-forwarder.ps1`).
+- **Setup & Troubleshooting Guide:** Fully documented in [`P2-Windows-Security-Monitoring/docs/setup.md`](P2-Windows-Security-Monitoring/docs/setup.md).
+
 ---
 
 ## 4. Technology Stack
