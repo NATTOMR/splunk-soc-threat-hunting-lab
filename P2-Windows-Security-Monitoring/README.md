@@ -107,8 +107,8 @@ To ensure engineering integrity, components are strictly tracked by verification
 |---|:---:|---|
 | **Project Structure & Planning** | ✅ **IMPLEMENTED** | Repository skeleton, directories, and documentation established. |
 | **Windows Audit Policy Design** | 🟡 **IN PROGRESS** | Defining required SACLs and GPO/auditpol baseline. |
-| **Splunk Enterprise Receiver (Port 9997)** | ⚪ **PLANNED** | Awaiting indexer receiver stanza enablement. |
-| **Splunk Universal Forwarder Setup** | ⚪ **PLANNED** | Awaiting MSI installation and config deployment on Windows 11. |
+| **Splunk Enterprise Receiver (Port 9997)** | ✅ **IMPLEMENTED** | Splunk Enterprise 10.4.3 receiver active on 192.168.100.7:9997. |
+| **Splunk Universal Forwarder Setup** | 🟡 **IN PROGRESS** | Awaiting MSI installation and config deployment on Windows 11. |
 | **Live Telemetry Ingestion** | ⚪ **PLANNED** | Awaiting verification of first live events in `index=windows`. |
 | **Authentication Monitoring (4624/4625)** | ⚪ **PLANNED** | Failed logon bursts and logon type categorization. |
 | **Account Activity & Creation (4720/4726)** | ⚪ **PLANNED** | User creation, deletion, and group modification tracking. |
@@ -118,6 +118,18 @@ To ensure engineering integrity, components are strictly tracked by verification
 | **Brute-Force & Anomaly Detections** | ⚪ **PLANNED** | Correlation rules for repeated auth failures within sliding windows. |
 | **Windows SOC Security Dashboard** | ⚪ **PLANNED** | Multi-panel visual workbench for Windows endpoint events. |
 | **Incident Investigation Scenarios** | ⚪ **PLANNED** | End-to-end simulated incident analysis and writeup. |
+
+### 📋 Milestone Log & Detailed Tracking
+- **2026-09-09 — Milestone P2.1 (Infrastructure & Receiver Verification):**
+  - Verified Ubuntu 24.04.4 LTS server (`192.168.100.7`) and active Wazuh infrastructure (Manager, Indexer, Dashboard, Agents).
+  - Verified Windows 11 endpoint (`192.168.100.8`) with active Sysmon64 (22,921+ records ingested into Wazuh archives; Event ID 13 verified).
+  - Installed and started Splunk Enterprise 10.4.3 on `/opt/splunk` (service user `splunk`, ports 8000, 8089, 8065, 8191 active).
+  - Configured VirtualBox `LabNetwork` (`192.168.100.0/24`), validated host-to-guest port forwarding (`18000:8000`), and verified Windows-to-Ubuntu connectivity.
+  - Configured Ubuntu firewall (`ufw`) and enabled Splunk receiver port `9997/tcp`.
+  - Corrected accidental self-forwarder configuration to ensure correct architecture: Windows UF → Ubuntu Splunk Enterprise receiver.
+  - Progress Documentation: [`docs/P2-SPLUNK-SOC-INTEGRATION.md`](../docs/P2-SPLUNK-SOC-INTEGRATION.md).
+- **Current Completion:** 11 / 23 tracked tasks completed (**47.8%**).
+- **Next Milestone:** **P2.2 — Windows Universal Forwarder → Splunk Enterprise**.
 
 ---
 
