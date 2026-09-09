@@ -1,6 +1,6 @@
 # 🏗️ P2 Architecture: Windows 11 to Splunk Pipeline
 
-> **Document Status:** 🟡 **IN PROGRESS (Network & Receiver Verified)**  
+> **Document Status:** ✅ **VERIFIED & ACTIVE — Full Pipeline Operational**  
 > **Component:** Telemetry & Networking Architecture  
 > **Progress Log:** [P2 Integration Log](../../docs/P2-SPLUNK-SOC-INTEGRATION.md)  
 
@@ -70,7 +70,7 @@ flowchart TD
 - **Web Interface:** Port `8000` mapped to host `18000` (`http://127.0.0.1:18000` — Verified)
 - **Management Port:** TCP `8089` (Verified)
 - **Network Segmentation:** VirtualBox NAT Network `LabNetwork` (`192.168.100.0/24`, Gateway `192.168.100.1` — Verified)
-- **Target Indexes:** `index=windows`, `index=sysmon` (Planned)
+- **Target Indexes:** `index=windows` ✅ Active, `index=sysmon` ✅ Active — both verified with live data
 
 ---
 

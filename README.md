@@ -1,213 +1,438 @@
-# 🛡️ Splunk SOC & Threat Hunting Lab
+# Splunk SOC Threat Hunting Lab
 
-A comprehensive hands-on Splunk SOC and threat hunting laboratory covering security monitoring, centralized log analysis, SPL, detection engineering, incident investigation, MITRE ATT&CK threat hunting, SOC dashboards, and Wazuh-Splunk integration.
-
----
-
-[![Repo Type](https://img.shields.io/badge/Repository-Master%20%2F%20Hub-blue.svg)](#-master-repository-structure)
-[![SIEM](https://img.shields.io/badge/SIEM-Splunk%20Enterprise-orange.svg)](https://www.splunk.com/)
+[![Lab Status](https://img.shields.io/badge/Lab%20Status-Active-brightgreen.svg)](#environment)
+[![SIEM](https://img.shields.io/badge/SIEM-Splunk%20Enterprise%2010.4.3-orange.svg)](https://www.splunk.com/)
+[![Forwarder](https://img.shields.io/badge/Universal%20Forwarder-10.4.3-orange.svg)](https://www.splunk.com/)
 [![Framework](https://img.shields.io/badge/Framework-MITRE%20ATT%26CK-red.svg)](https://attack.mitre.org/)
+[![Platform](https://img.shields.io/badge/Endpoint-Windows%2011-0078D6.svg)](#environment)
+[![Sysmon](https://img.shields.io/badge/Sysmon-Installed%20%26%20Running-blue.svg)](#sysmon-integration)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Lab%20Status-Active%20Development-yellow.svg)](#-project-roadmap)
 
 ---
 
-## 1. Project Overview
+## Overview
 
-This repository serves as the **Master Hub and Central Portfolio** for an enterprise-modeled Splunk Security Operations Center (SOC) and Threat Hunting laboratory. 
+A hands-on Security Operations Center (SOC) threat-hunting environment built using **Splunk Enterprise**, **Splunk Universal Forwarder**, **Sysmon**, and **Windows 11**. The lab demonstrates centralized Windows telemetry collection, Sysmon-based process and network monitoring, event analysis, and SOC dashboard visualization — covering a complete data pipeline from endpoint to analyst.
 
-Security telemetry in modern environments spans multiple operating systems, network perimeters, endpoints, and application stacks. Building, operating, and defending such an ecosystem requires an end-to-end understanding of how logs are generated, securely transported, parsed, correlated, and investigated under realistic threat scenarios.
-
-### Master Repository Purpose
-- **Central Portfolio Directory**: Outlines the overarching SOC architecture, technology stack, and engineering roadmap across 10 specialized projects (P1–P10).
-- **Decoupled Project Design**: To maintain production-grade standards, the actual hands-on implementations, raw configuration files, SPL queries, alerts, dashboards, and investigation reports are maintained within dedicated standalone repositories for each project.
-- **Architectural Reference**: Provides a single source of truth for threat models, telemetry data flow, and detection engineering coverage across all connected projects.
+This project is portfolio-ready and reflects practical SOC analyst skills including telemetry pipeline engineering, SPL development, detection use-case design, and incident investigation workflows.
 
 ---
 
-## 2. Objectives
+## Objectives
 
-- **Telemetry Pipeline Engineering**: Deploy and configure Splunk Universal Forwarders across heterogeneous endpoints (Windows, Linux) to establish reliable, tamper-resistant log forwarding into Splunk Enterprise.
-- **Advanced SPL Development**: Master Splunk Search Processing Language (SPL) for exploratory search, statistical data aggregation, event correlation, and anomaly discovery.
-- **Detection Engineering**: Design, tune, and operationalize high-fidelity alert rules mapped to specific adversary techniques to detect malicious behavior while minimizing false positives.
-- **Incident Investigation & Triage**: Conduct structured security investigations simulating Tier 1–Tier 3 SOC workflows, performing timeline reconstruction, pivot analysis, and root-cause identification.
-- **Threat Hunting**: Formulate threat hypotheses based on the **MITRE ATT&CK** framework, proactively searching baseline data for advanced persistence, defense evasion, and credential access techniques.
-- **SOC Visualization & Reporting**: Build modular, operational dashboards tailored for security analysts and SOC management to monitor real-time security posture.
-- **Hybrid SIEM/XDR Integration**: Architect a correlated monitoring pipeline uniting host-level intrusion detection and file integrity monitoring (Wazuh) with centralized log analytics (Splunk).
+- Deploy and configure a functional Splunk data pipeline from Windows endpoint to Splunk Enterprise
+- Collect high-fidelity telemetry using Sysmon and Windows Event Logs
+- Develop verified SPL queries for threat hunting across process, DNS, and authentication data
+- Build and document an operational SOC Threat Hunting Dashboard
+- Demonstrate structured SOC analyst workflows: baseline profiling, anomaly identification, and investigation
 
 ---
 
-## 3. SOC Lab Architecture
-
-The lab simulates a segmented enterprise environment consisting of victim endpoints, attack simulation systems, log collection forwarders, a centralized Splunk indexer/search head, and an integrated open-source XDR manager.
-
-### Telemetry & Investigation Data Flow
-
-```mermaid
-flowchart TD
-    subgraph Adversary["Adversary Emulation"]
-        A["Kali Linux / Attack Simulation"]
-    end
-
-    subgraph Endpoints["Monitored Infrastructure"]
-        W["Windows Endpoints\n(Sysmon & WinEventLog)"]
-        L["Linux Endpoints\n(Syslog & Auth Logs)"]
-    end
-
-    subgraph Forwarding["Log Ingestion Layer"]
-        UFW["Splunk Universal Forwarder (Win)"]
-        UFL["Splunk Universal Forwarder (Linux)"]
-    end
-
-    subgraph SIEM["Central Analytics Platform"]
-        SE["Splunk Enterprise\n(Indexer & Search Head)"]
-        AN["Log Analysis / SPL Engine\nDetection Rules / Alerts / Dashboards"]
-    end
-
-    subgraph SOC["Security Operations Center"]
-        INV["SOC Analyst Investigation\nTriage, Pivot & Root Cause Analysis"]
-    end
-
-    A -. Attacks / Techniques .-> W
-    A -. Attacks / Techniques .-> L
-
-    W --> UFW
-    L --> UFL
-
-    UFW -->|Encrypted Port 9997| SE
-    UFL -->|Encrypted Port 9997| SE
-
-    SE --> AN
-    AN --> INV
-```
-
-### Hybrid Wazuh + Splunk Integration Concept (Planned)
-
-In the advanced phase of the lab architecture (Project P10), endpoint telemetry will be augmented with host-based intrusion detection (HIDS/XDR):
+## Architecture
 
 ```mermaid
 flowchart LR
-    subgraph HostAgents["Endpoint Layer"]
-        WA["Wazuh Agents\n(FIM, Rootkit, SCA)"]
-    end
-
-    subgraph XDRPlatform["HIDS / XDR Management"]
-        WM["Wazuh Manager / Indexer\n(Rule Engine & Active Response)"]
-    end
-
-    subgraph SplunkSIEM["SIEM Correlation & Centralized SOC"]
-        SE["Splunk Enterprise\n(Central Indexer / Search Head)"]
-        SOC["SOC Dashboard & Unified Alerts"]
-    end
-
-    WA -->|Encrypted Agent Channel| WM
-    WM -->|Syslog / API / Forwarder Ingestion| SE
-    SE --> SOC
+    A[Windows 11 Endpoint] --> B[Sysmon]
+    A --> C[Windows Event Logs]
+    B --> D[Splunk Universal Forwarder]
+    C --> D
+    D -->|TCP 9997| E[Splunk Enterprise]
+    E --> F[windows Index]
+    E --> G[sysmon Index]
+    G --> H[SOC Threat Hunting Dashboard]
+    F --> H
 ```
 
-### Lab Configuration (Verified Baseline)
+**Data Flow:**
 
-The central lab infrastructure operates across a dedicated NAT Network (`192.168.100.0/24`) connecting the Windows 11 endpoint and Ubuntu Splunk Enterprise indexer:
+```
+Windows 11 Endpoint (192.168.100.8)
+        │
+        │  Sysmon telemetry + Windows Event Logs
+        ▼
+Splunk Universal Forwarder (UF 10.4.3)
+        │
+        │  TCP 9997
+        ▼
+Splunk Enterprise (192.168.100.7)
+        │
+        ├──► index=windows   (Security, System, Application logs)
+        │
+        └──► index=sysmon    (Sysmon process, network, registry, DNS)
+                │
+                ▼
+        SOC Threat Hunting Dashboard
+```
 
-| Parameter | Windows 11 Endpoint (`192.168.100.8`) | Ubuntu Splunk Enterprise (`192.168.100.7`) |
+---
+
+## Technologies
+
+| Technology | Version | Role |
 |---|---|---|
-| **Role** | Monitored Workstation / Telemetry Source | Central SIEM / Indexer / Search Head |
-| **Active Services** | • `SplunkForwarder` (UF 10.4.3)<br>• `Sysmon64` (Sysmon v15.15) | • `splunkd` (Splunk Enterprise 10.4.3)<br>• `wazuh-manager` |
-| **Service Account** | `NT SERVICE\SplunkForwarder` (`Event Log Readers`) | `splunk` (Dedicated system account) |
-| **Active Ports** | TCP `9997` (Outbound) | TCP `9997` (Receiver), TCP `8000`/`18000` (Web), TCP `8089` |
-| **Event Channels** | Security, System, Application, Sysmon/Operational | Listening socket: `0.0.0.0:9997` |
-| **Splunk Indexes** | Inputs route to `windows` and `sysmon` | Indexed in `index=windows` and `index=sysmon` |
-
-### Configuration Management
-
-All operational forwarder inputs, index definitions, and deployment scripts are version-controlled within the project repository to ensure clean, idempotent, and repeatable deployment:
-- **Configuration Templates:** Stored in [`P2-Windows-Security-Monitoring/config/`](P2-Windows-Security-Monitoring/config/) (`inputs.conf`, `outputs.conf`, `indexes.conf`).
-- **PowerShell Automation:** Stored in [`P2-Windows-Security-Monitoring/scripts/`](P2-Windows-Security-Monitoring/scripts/) (`verify-splunk.ps1`, `configure-forwarder.ps1`, `install-forwarder.ps1`).
-- **Setup & Troubleshooting Guide:** Fully documented in [`P2-Windows-Security-Monitoring/docs/setup.md`](P2-Windows-Security-Monitoring/docs/setup.md).
+| **Splunk Enterprise** | 10.4.3 | Central SIEM — indexer, search head, dashboard |
+| **Splunk Universal Forwarder** | 10.4.3 | Endpoint log collection and transport agent |
+| **Sysmon** | v15.15 | Kernel-level Windows telemetry provider |
+| **Windows 11** | 64-bit | Monitored endpoint / telemetry source |
+| **SPL** | — | Search Processing Language for queries and detections |
+| **Linux (Ubuntu)** | 24.04 | Splunk Enterprise host OS |
+| **PowerShell** | 5.1+ | Automation and validation scripts |
+| **VirtualBox** | — | Hypervisor for isolated lab network |
+| **MITRE ATT&CK** | — | Threat model and detection classification framework |
 
 ---
 
-## 4. Technology Stack
+## Environment
 
-The lab incorporates industry-standard security tools, virtualization infrastructure, and threat modeling frameworks. 
-
-| Technology / Component | Role in Lab | Implementation Status |
+| Parameter | Windows 11 Endpoint | Splunk Enterprise Server |
 |---|---|---|
-| **Splunk Enterprise** | Central SIEM platform, indexing engine, search processing, alerting, and visualization | 🟡 Active (In Progress) |
-| **Splunk Universal Forwarder** | Lightweight endpoint log collection and secure transport agent | 🟡 Active (In Progress) |
-| **SPL (Search Processing Language)** | Query syntax for data exploration, statistical analysis, and detection logic | 🟡 Active (In Progress) |
-| **Windows** | Windows Server & Workstation targets generating Security Event Logs and Sysmon telemetry | 🟡 Active (In Progress) |
-| **Linux** | Ubuntu/Debian server endpoints generating `auth.log`, `syslog`, and audit records | ⚪ Planned |
-| **Kali Linux** | Dedicated attack platform for adversary emulation, payload testing, and brute-force simulation | ⚪ Planned |
-| **Wazuh** | Open-source XDR/SIEM for host-based intrusion detection, FIM, and vulnerability scanning | ⚪ Planned |
-| **MITRE ATT&CK** | Standard framework used to categorize detection engineering rules and threat hunting hypotheses | 🟡 Active / Ongoing |
-| **VirtualBox** | Hypervisor hosting isolated virtual network segments (Host-Only / NAT Network) | 🟡 Active (In Progress) |
-
-> **Note on Implementation Status**: Technologies marked **Active (In Progress)** are currently utilized in the foundational lab pipeline. Technologies marked **Planned** will be deployed during their respective project milestones as indicated in the roadmap.
+| **IP Address** | `192.168.100.8` | `192.168.100.7` |
+| **Role** | Monitored endpoint / telemetry source | Central SIEM / indexer / search head |
+| **Services** | `SplunkForwarder`, `Sysmon64` | `splunkd` |
+| **Service Account** | `NT SERVICE\SplunkForwarder` | `splunk` (dedicated system user) |
+| **Active Ports** | TCP `9997` (outbound) | TCP `9997` (receiver), `18000` (web), `8089` (mgmt) |
+| **Network** | VirtualBox NAT Network `LabNetwork` — `192.168.100.0/24` | — |
+| **Splunk Web** | — | `http://127.0.0.1:18000` (host-mapped) |
 
 ---
 
-## 5. Project Roadmap
+## Data Collection
 
-The complete portfolio spans 10 structured projects demonstrating sequential progression from core lab engineering to advanced threat detection, dashboard development, and cross-platform SIEM integration.
+The Splunk Universal Forwarder is configured with `renderXml = true`, ingesting all event channels as structured XML for high-fidelity field preservation.
 
-| ID | Project Name | Scope & Core Focus | Status |
-|:---:|---|---|:---:|
-| **P1** | **Splunk SOC Home Lab & Log Analysis** | Foundational VirtualBox lab setup, Splunk Enterprise installation, Universal Forwarder deployment, basic log ingestion, and SPL baseline exploration. | 🟡 In Progress |
-| **P2** | **[Windows Security Monitoring](P2-Windows-Security-Monitoring/)** | Windows Event Log auditing, Sysmon telemetry ingestion, process creation tracking, and account logon anomaly detection. ([Progress Log](docs/P2-SPLUNK-SOC-INTEGRATION.md)) | 🟡 In Progress |
-| **P3** | **Linux Security Monitoring** | Ubuntu/Debian logging (`/var/log/auth.log`, `syslog`), sudo abuse tracking, SSH session auditing, and service monitoring. | ⚪ Planned |
-| **P4** | **Brute-Force Detection & Investigation** | Detecting failed logon spikes, credential stuffing, account lockout patterns, and automated Kali Linux Hydra/Medusa simulations. | ⚪ Planned |
-| **P5** | **Network Threat Detection** | Firewall and network log analysis, port scanning identification, beaconing detection, and unusual outbound connections. | ⚪ Planned |
-| **P6** | **Web Attack Detection** | Web server access/error log analysis, detecting SQL Injection (SQLi), Cross-Site Scripting (XSS), directory traversal, and scanner fingerprints. | ⚪ Planned |
-| **P7** | **Phishing Email Investigation** | Email header analysis, malicious link and attachment triage, delivery tracking, and correlated endpoint execution traces. | ⚪ Planned |
-| **P8** | **MITRE ATT&CK Threat Hunting** | Hypothesis-driven hunting across Initial Access, Persistence, Privilege Escalation, and Defense Evasion tactics. | ⚪ Planned |
-| **P9** | **Splunk SOC Dashboard** | Design and implementation of operational analyst dashboards, executive KPI visualizers, and interactive triage workflows. | ⚪ Planned |
-| **P10** | **Wazuh + Splunk SIEM Integration** | End-to-end integration streaming Wazuh manager alerts and agent telemetry into Splunk for unified SOC correlation. | ⚪ Planned |
+### inputs.conf (Active Configuration)
+
+```ini
+[WinEventLog://Security]
+disabled = 0
+index = windows
+renderXml = true
+
+[WinEventLog://System]
+disabled = 0
+index = windows
+renderXml = true
+
+[WinEventLog://Application]
+disabled = 0
+index = windows
+renderXml = true
+
+[WinEventLog://Microsoft-Windows-Sysmon/Operational]
+disabled = 0
+index = sysmon
+renderXml = true
+```
+
+### Index Mapping
+
+| Event Source | Splunk Index |
+|---|---|
+| Windows Security Event Log | `index=windows` |
+| Windows System Event Log | `index=windows` |
+| Windows Application Event Log | `index=windows` |
+| Microsoft-Windows-Sysmon/Operational | `index=sysmon` |
+
+### Important: XML EventID Extraction
+
+Because events are stored as raw XML, Sysmon EventID values are embedded as `<EventID>...</EventID>`. Use `rex` to extract them before filtering:
+
+```spl
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| search EventID=1
+```
+
+Do not use `EventCode=1` directly in `index=sysmon` — it returns zero results.
 
 ---
 
-## 6. Skills Demonstrated
+## Sysmon Integration
 
-Through this laboratory portfolio, the following technical and operational competencies are demonstrated:
+Sysmon (System Monitor) is installed and running on the Windows 11 endpoint as `Sysmon64`. It generates kernel-level telemetry forwarded to `index=sysmon`.
 
-- **SIEM Administration & Architecture**: Installing, configuring, and tuning Splunk Enterprise instances, managing indexes, sourcetypes, inputs, and outputs.
-- **Endpoint Agent Deployment**: Configuring `inputs.conf` and `outputs.conf` on Windows and Linux Universal Forwarders.
-- **Search Processing Language (SPL)**: Writing robust queries using commands such as `stats`, `eval`, `rex`, `lookup`, `transaction`, `timechart`, `chart`, and `bin`.
-- **Detection Engineering**: Building alert triggers, setting threshold sensitivity, suppressing noise, and validating alert fidelity against simulated attacks.
-- **Incident Investigation & Root Cause Analysis**: Conducting structured log investigations, reconstructing multi-stage attack timelines, and attributing findings to threat sources.
-- **Threat Hunting**: Applying the hypothesis-driven hunting methodology mapped to MITRE ATT&CK Tactics, Techniques, and Procedures (TTPs).
-- **SOC Operations & Dashboard Engineering**: Constructing real-time monitoring panels with dynamic drill-downs and key performance indicators (KPIs).
+### Observed Sysmon Event IDs
+
+| Event ID | Description | Threat Relevance |
+|:---:|---|---|
+| 1 | Process Create | Execution monitoring |
+| 2 | File Creation Time Changed | Anti-forensic activity |
+| 3 | Network Connection | C2 / lateral movement |
+| 4 | Sysmon Service State Changed | Tampering detection |
+| 5 | Process Terminated | Lifecycle tracking |
+| 8 | CreateRemoteThread | Process injection |
+| 11 | FileCreate | Dropper / persistence |
+| 12 | Registry Object Added/Deleted | Registry persistence |
+| 13 | Registry Value Set | Configuration tampering |
+| 22 | DNS Query | Beaconing / DGA detection |
+| 255 | Sysmon Error/Status | Operational monitoring |
+
+> Event IDs listed reflect those observed in current lab data. Not all types are continuously generated; occurrence depends on endpoint activity.
 
 ---
 
-## 7. Project Repository Links
+## Splunk Universal Forwarder
 
-Each project in the portfolio maintains its own dedicated repository containing detailed configuration instructions, raw dataset samples, SPL queries, alert configurations, dashboards, screenshots, and investigation walkthroughs.
+The Splunk Universal Forwarder (UF 10.4.3) is installed on Windows 11 and configured to forward to Splunk Enterprise.
 
-| Project ID | Project Title | Dedicated Repository Link |
+**Forwarding configuration (`outputs.conf`):**
+
+```
+[tcpout]
+defaultGroup = splunk-enterprise
+
+[tcpout:splunk-enterprise]
+server = 192.168.100.7:9997
+```
+
+**Verified active connection:**
+
+```
+Active forwards:
+        192.168.100.7:9997
+```
+
+The SplunkForwarder service account (`NT SERVICE\SplunkForwarder`) is a member of the local `Event Log Readers` group, granting access to the Sysmon operational log channel.
+
+---
+
+## SPL Threat Hunting
+
+All verified SPL queries are documented in [`docs/spl-queries.md`](P2-Windows-Security-Monitoring/docs/spl-queries.md).
+
+### Key Queries
+
+**Sysmon Event ID Distribution:**
+
+```spl
+index=sysmon earliest=-24h
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| stats count by EventID
+| sort EventID
+```
+
+**Top Process Executions:**
+
+```spl
+index=sysmon earliest=-24h
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| search EventID=1
+| rex field=_raw "<Data Name='Image'>(?<process_image>[^<]+)</Data>"
+| stats count as executions by process_image
+| sort - executions
+| head 15
+```
+
+**PowerShell Activity:**
+
+```spl
+index=sysmon earliest=-24h
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| search EventID=1
+| rex field=_raw "<Data Name='Image'>(?<Image>[^<]+)</Data>"
+| rex field=_raw "<Data Name='CommandLine'>(?<CommandLine>[^<]*)</Data>"
+| search Image="*powershell.exe"
+| stats count by Image CommandLine
+| sort -count
+```
+
+---
+
+## SOC Threat Hunting Dashboard
+
+The **SOC Threat Hunting Dashboard** provides real-time visibility into Sysmon and Windows Security telemetry. All panels use the global time range picker — values change dynamically based on the selected window.
+
+Full dashboard documentation: [`docs/dashboard.md`](P2-Windows-Security-Monitoring/docs/dashboard.md)
+
+### Dashboard Panels
+
+| Panel | Query Basis | Visualization |
+|---|---|---|
+| Total Security Events | `index=windows \| stats count` | Single value |
+| Sysmon Events | `index=sysmon` | Single value |
+| Sysmon Process Creation Events | EventID=1 extraction + count | Single value |
+| Sysmon DNS Query Events | EventID=22 extraction + count | Single value |
+| Sysmon Event ID Distribution | `stats count by EventID` | Bar chart |
+| Top Process Executions | EventID=1 + `rex Image` + `stats` | Bar chart |
+
+### Dashboard Screenshot
+
+![Figure 1 — Splunk SOC Threat Hunting Dashboard](P2-Windows-Security-Monitoring/screenshots/Screenshot%202026-09-10%20031815.png)
+
+*Figure 1 — Splunk SOC Threat Hunting Dashboard (live lab session)*
+
+---
+
+## Detection Use Cases
+
+This project demonstrates the following defensive SOC monitoring use cases:
+
+| Use Case | Data Source | EventID / Log |
+|---|---|---|
+| Process creation monitoring | Sysmon | EventID 1 |
+| DNS query monitoring | Sysmon | EventID 22 |
+| PowerShell execution analysis | Sysmon | EventID 1 (`powershell.exe`) |
+| Process injection detection | Sysmon | EventID 8 (CreateRemoteThread) |
+| Network activity investigation | Sysmon | EventID 3 |
+| File drop / dropper detection | Sysmon | EventID 11 |
+| Registry persistence monitoring | Sysmon | EventID 12, 13 |
+| Windows authentication monitoring | Security Log | EventID 4624, 4625 |
+| Account management monitoring | Security Log | EventID 4720, 4726 |
+| Timeline-based threat hunting | Sysmon + Windows | `timechart` queries |
+
+---
+
+## Validation
+
+Full validation commands documented in [`docs/validation.md`](P2-Windows-Security-Monitoring/docs/validation.md).
+
+### Quick Checks
+
+**Windows endpoint:**
+
+```powershell
+Get-Service SplunkForwarder       # Must be Running
+Get-Service Sysmon*               # Must be Running
+Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" -MaxEvents 5
+```
+
+**Splunk Enterprise (Ubuntu):**
+
+```bash
+sudo ss -lntp | grep ':9997'                              # TCP 9997 must be LISTEN
+sudo -u splunk /opt/splunk/bin/splunk list index          # sysmon, windows must be listed
+```
+
+**SPL verification:**
+
+```spl
+index=sysmon earliest=-7d | head 10
+index=windows earliest=-7d | head 10
+```
+
+---
+
+## Troubleshooting
+
+Full troubleshooting guide: [`docs/troubleshooting.md`](P2-Windows-Security-Monitoring/docs/troubleshooting.md)
+
+| Issue | Cause | Solution |
+|---|---|---|
+| `EventCode=1` returns zero results | XML rendering — EventCode not auto-extracted | Use `rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"` |
+| Sysmon subscription `errorCode=5` | `NT SERVICE\SplunkForwarder` lacks log read permission | `net localgroup "Event Log Readers" "NT SERVICE\SplunkForwarder" /add` |
+| Forwarder shows "Configured but inactive" | Splunk Enterprise unreachable / not running | Verify TCP 9997, restart Splunk Enterprise and forwarder |
+| Dashboard panels show no data | Time range too narrow / index empty | Test `index=sysmon earliest=-7d` to confirm data exists |
+
+---
+
+## Project Structure
+
+```
+splunk-soc-threat-hunting-lab/
+│
+├── README.md                                   # This file — project overview
+├── LICENSE
+├── .gitignore                                  # Security-sensitive file exclusions
+│
+├── docs/
+│   └── P2-SPLUNK-SOC-INTEGRATION.md           # Progress and milestone log
+│
+└── P2-Windows-Security-Monitoring/
+    │
+    ├── README.md                               # P2 project detail
+    │
+    ├── config/                                 # Forwarder configuration templates
+    │   ├── inputs.conf                         # Event channel definitions
+    │   ├── outputs.conf                        # Forward server configuration
+    │   ├── indexes.conf                        # Index definitions for Splunk Enterprise
+    │   └── windows/
+    │       └── sysmonconfig.xml                # Sysmon XML configuration
+    │
+    ├── docs/                                   # Technical documentation
+    │   ├── architecture.md                     # Network and data flow architecture
+    │   ├── dashboard.md                        # Dashboard panel documentation
+    │   ├── spl-queries.md                      # Verified SPL threat-hunting queries
+    │   ├── validation.md                       # Validation and testing commands
+    │   ├── troubleshooting.md                  # Known issues and solutions
+    │   ├── setup.md                            # Quick-start deployment guide
+    │   ├── splunk-forwarder.md                 # Forwarder deployment guide
+    │   └── windows-auditing.md                 # Windows audit policy guide
+    │
+    ├── scripts/                                # PowerShell automation scripts
+    │   ├── verify-splunk.ps1                   # End-to-end pipeline verification
+    │   ├── configure-forwarder.ps1             # Forwarder configuration script
+    │   ├── configure-audit-policy.ps1          # Windows audit policy baseline
+    │   └── install-forwarder.ps1               # Forwarder installation script
+    │
+    └── screenshots/                            # Lab evidence and verification exhibits
+        ├── Screenshot 2026-09-10 031815.png    # SOC Threat Hunting Dashboard
+        ├── p2-01-windows11-sysmon-*.png        # Windows endpoint evidence
+        ├── p2-17-splunk-web-login-*.png        # Splunk Web UI
+        ├── p2-18-splunk-web-admin-*.png        # Admin dashboard
+        └── p2-19-splunk-receiver-*.png         # Receiver port and firewall
+```
+
+---
+
+## Screenshots
+
+| Figure | Description |
+|---|---|
+| [Figure 1](P2-Windows-Security-Monitoring/screenshots/Screenshot%202026-09-10%20031815.png) | SOC Threat Hunting Dashboard — live session |
+| [Figure 2](P2-Windows-Security-Monitoring/screenshots/p2-17-splunk-web-login-port-18000.png) | Splunk Web login via host port 18000 |
+| [Figure 3](P2-Windows-Security-Monitoring/screenshots/p2-18-splunk-web-admin-dashboard-home.png) | Splunk Enterprise Admin home |
+| [Figure 4](P2-Windows-Security-Monitoring/screenshots/p2-19-splunk-receiver-listen-9997-ufw-rules.png) | TCP 9997 receiver — socket and UFW rules |
+| [Figure 5](P2-Windows-Security-Monitoring/screenshots/p2-01-windows11-sysmon-service-uf-download.png) | Windows 11 — Sysmon service and UF download |
+
+---
+
+## Security Considerations
+
+- **No credentials committed.** The forwarder service account password, Splunk admin password, and all authentication secrets are excluded from this repository.
+- **`.gitignore` enforced** to prevent accidental exposure of `passwd`, `user-seed.conf`, `*.key`, `*.pem`, and similar sensitive files.
+- **Placeholders used** for all credential references in documentation (e.g., `<YOUR_PASSWORD>`, `<YOUR_SERVER_IP>`).
+- The Splunk Universal Forwarder service runs as `NT SERVICE\SplunkForwarder` — a minimal-privilege built-in service account.
+- UFW firewall on the Ubuntu server restricts TCP 9997 access to the lab subnet (`192.168.100.0/24`).
+
+---
+
+## Future Improvements
+
+| Item | Description |
+|---|---|
+| **Linux endpoint monitoring** | Add Ubuntu log forwarding (`auth.log`, `syslog`) — Project P3 |
+| **Brute-force detection** | Alert rules on EventID 4625 threshold — Project P4 |
+| **Network threat detection** | Firewall log analysis and port scan detection — Project P5 |
+| **MITRE ATT&CK threat hunting** | Hypothesis-driven hunting across ATT&CK tactics — Project P8 |
+| **Automated adversary emulation** | Atomic Red Team execution for detection validation |
+| **Sigma rule conversion** | Translate community Sigma rules to Splunk SPL |
+| **Threat intelligence enrichment** | VirusTotal / AbuseIPDB integration via Splunk lookups |
+| **Wazuh + Splunk integration** | Unified HIDS/SIEM correlation pipeline — Project P10 |
+
+---
+
+## Project Roadmap
+
+| ID | Project | Status |
 |:---:|---|:---:|
-| **P1** | Splunk SOC Home Lab & Log Analysis | [NATTOMR/Log-Monitoring-Analysis-by-using-splunk](https://github.com/NATTOMR/Log-Monitoring-Analysis-by-using-splunk) |
-| **P2** | Windows Security Monitoring | [P2-Windows-Security-Monitoring/](P2-Windows-Security-Monitoring/) |
-| **P3** | Linux Security Monitoring | *Planned repository* |
-| **P4** | Brute-Force Detection & Investigation | *Planned repository* |
-| **P5** | Network Threat Detection | *Planned repository* |
-| **P6** | Web Attack Detection | *Planned repository* |
-| **P7** | Phishing Email Investigation | *Planned repository* |
-| **P8** | MITRE ATT&CK Threat Hunting | *Planned repository* |
-| **P9** | Splunk SOC Dashboard | *Planned repository* |
-| **P10** | Wazuh + Splunk SIEM Integration | *Planned repository* |
+| **P1** | Splunk SOC Home Lab & Log Analysis | 🟡 In Progress |
+| **P2** | **Windows Security Monitoring (this project)** | 🟡 In Progress |
+| **P3** | Linux Security Monitoring | ⚪ Planned |
+| **P4** | Brute-Force Detection & Investigation | ⚪ Planned |
+| **P5** | Network Threat Detection | ⚪ Planned |
+| **P6** | Web Attack Detection | ⚪ Planned |
+| **P7** | Phishing Email Investigation | ⚪ Planned |
+| **P8** | MITRE ATT&CK Threat Hunting | ⚪ Planned |
+| **P9** | Splunk SOC Dashboard | ⚪ Planned |
+| **P10** | Wazuh + Splunk SIEM Integration | ⚪ Planned |
 
 ---
 
-## 8. Future Enhancements
+## Disclaimer
 
-- **Threat Intelligence Enrichment**: Integrate threat feeds (VirusTotal, AbuseIPDB, AlienVault OTX) into Splunk search workflows via automated lookups and API queries.
-- **Automated Adversary Emulation**: Utilize Atomic Red Team execution frameworks on endpoints to automate repeatable testing of detection rules.
-- **Sigma Rule Conversion**: Implement automated pipelines translating generic Sigma detection rules into optimized Splunk SPL queries.
-- **SOAR Capabilities**: Explore orchestration actions to automate containment (e.g., firewall blocklist updates, account disablement) upon critical detection triggers.
+This is a controlled, isolated cybersecurity lab environment built for educational and portfolio purposes. All monitoring, telemetry collection, and analysis is performed on virtual machines within a private NAT network. No production systems or external networks are involved. This project does not claim to provide enterprise-grade threat detection or real-time incident response capabilities.
 
 ---
 
-## 📄 License
+## License
 
-This repository and its documentation are open-source and licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE).
