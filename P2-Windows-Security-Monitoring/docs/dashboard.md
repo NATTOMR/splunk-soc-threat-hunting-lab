@@ -172,7 +172,7 @@ This means:
 
 | Figure | File | Description |
 |---|---|---|
-| Figure 1 | [`Screenshot 2026-09-10 031815.png`](../screenshots/Screenshot%202026-09-10%20031815.png) | SOC Threat Hunting Dashboard — full view |
+| Figure 1 | [`p2-20-soc-threat-hunting-dashboard.png`](../screenshots/p2-20-soc-threat-hunting-dashboard.png) | SOC Threat Hunting Dashboard — full view |
 
 ---
 

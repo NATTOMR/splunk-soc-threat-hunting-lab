@@ -256,7 +256,7 @@ Full dashboard documentation: [`docs/dashboard.md`](P2-Windows-Security-Monitori
 
 ### Dashboard Screenshot
 
-![Figure 1 — Splunk SOC Threat Hunting Dashboard](P2-Windows-Security-Monitoring/screenshots/Screenshot%202026-09-10%20031815.png)
+![Figure 1 — Splunk SOC Threat Hunting Dashboard](P2-Windows-Security-Monitoring/screenshots/p2-20-soc-threat-hunting-dashboard.png)
 
 *Figure 1 — Splunk SOC Threat Hunting Dashboard (live lab session)*
 
@@ -364,7 +364,7 @@ splunk-soc-threat-hunting-lab/
     │   └── install-forwarder.ps1               # Forwarder installation script
     │
     └── screenshots/                            # Lab evidence and verification exhibits
-        ├── Screenshot 2026-09-10 031815.png    # SOC Threat Hunting Dashboard
+        ├── p2-20-soc-threat-hunting-dashboard.png  # SOC Threat Hunting Dashboard
         ├── p2-01-windows11-sysmon-*.png        # Windows endpoint evidence
         ├── p2-17-splunk-web-login-*.png        # Splunk Web UI
         ├── p2-18-splunk-web-admin-*.png        # Admin dashboard
@@ -377,7 +377,7 @@ splunk-soc-threat-hunting-lab/
 
 | Figure | Description |
 |---|---|
-| [Figure 1](P2-Windows-Security-Monitoring/screenshots/Screenshot%202026-09-10%20031815.png) | SOC Threat Hunting Dashboard — live session |
+| [Figure 1](P2-Windows-Security-Monitoring/screenshots/p2-20-soc-threat-hunting-dashboard.png) | SOC Threat Hunting Dashboard — live session |
 | [Figure 2](P2-Windows-Security-Monitoring/screenshots/p2-17-splunk-web-login-port-18000.png) | Splunk Web login via host port 18000 |
 | [Figure 3](P2-Windows-Security-Monitoring/screenshots/p2-18-splunk-web-admin-dashboard-home.png) | Splunk Enterprise Admin home |
 | [Figure 4](P2-Windows-Security-Monitoring/screenshots/p2-19-splunk-receiver-listen-9997-ufw-rules.png) | TCP 9997 receiver — socket and UFW rules |
