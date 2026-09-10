@@ -5,6 +5,7 @@
 [![Forwarder](https://img.shields.io/badge/Universal%20Forwarder-10.4.3-orange.svg)](https://www.splunk.com/)
 [![Framework](https://img.shields.io/badge/Framework-MITRE%20ATT%26CK-red.svg)](https://attack.mitre.org/)
 [![Platform](https://img.shields.io/badge/Endpoint-Windows%2011-0078D6.svg)](#environment)
+[![Linux](https://img.shields.io/badge/Endpoint-Ubuntu%2024.04%20LTS-E95420.svg)](#p3--linux-security-monitoring)
 [![Sysmon](https://img.shields.io/badge/Sysmon-Installed%20%26%20Running-blue.svg)](#sysmon-integration)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -34,34 +35,42 @@ This project is portfolio-ready and reflects practical SOC analyst skills includ
 flowchart LR
     A[Windows 11 Endpoint] --> B[Sysmon]
     A --> C[Windows Event Logs]
-    B --> D[Splunk Universal Forwarder]
+    B --> D[Splunk Universal Forwarder P2]
     C --> D
     D -->|TCP 9997| E[Splunk Enterprise]
     E --> F[windows Index]
     E --> G[sysmon Index]
     G --> H[SOC Threat Hunting Dashboard]
     F --> H
+    P3[Ubuntu P3 Endpoint] --> L[auth.log / syslog / audit.log]
+    L --> UF2[Splunk Universal Forwarder P3]
+    UF2 -->|TCP 9997| E
+    E --> I[linux_security Index]
+    I --> J[Failed SSH Detection]
 ```
 
 **Data Flow:**
 
 ```
-Windows 11 Endpoint (192.168.100.8)
-        │
-        │  Sysmon telemetry + Windows Event Logs
-        ▼
-Splunk Universal Forwarder (UF 10.4.3)
-        │
-        │  TCP 9997
-        ▼
-Splunk Enterprise (192.168.100.7)
-        │
-        ├──► index=windows   (Security, System, Application logs)
-        │
-        └──► index=sysmon    (Sysmon process, network, registry, DNS)
-                │
-                ▼
-        SOC Threat Hunting Dashboard
+Windows 11 Endpoint (192.168.100.8)          Ubuntu P3 (192.168.100.6)
+        │                                              │
+        │  Sysmon telemetry + Windows Event Logs       │  auth.log / syslog / audit.log
+        ▼                                              ▼
+Splunk Universal Forwarder (UF 10.4.3)    Splunk Universal Forwarder (UF 10.4.3)
+        │                                              │
+        └───────────────┬───────────────────────────────┘
+                        │  TCP 9997
+                        ▼
+              Splunk Enterprise (192.168.100.7)
+                        │
+                        ├──► index=windows        (Security, System, Application logs)
+                        ├──► index=sysmon         (Sysmon process, network, registry, DNS)
+                        │           │
+                        │           └──► SOC Threat Hunting Dashboard
+                        │
+                        └──► index=linux_security (auth.log, syslog, audit.log)
+                                        │
+                                        └──► UC-01: Failed SSH Authentication
 ```
 
 ---
@@ -75,7 +84,8 @@ Splunk Enterprise (192.168.100.7)
 | **Sysmon** | v15.15 | Kernel-level Windows telemetry provider |
 | **Windows 11** | 64-bit | Monitored endpoint / telemetry source |
 | **SPL** | — | Search Processing Language for queries and detections |
-| **Linux (Ubuntu)** | 24.04 | Splunk Enterprise host OS |
+| **Linux (Ubuntu Server)** | 24.04 (Splunk host) | Splunk Enterprise host OS |
+| **Linux (Ubuntu Server 24.04.5 LTS)** | 24.04.5 (P3 endpoint) | Monitored Linux endpoint — `ubuntu-p3` |
 | **PowerShell** | 5.1+ | Automation and validation scripts |
 | **VirtualBox** | — | Hypervisor for isolated lab network |
 | **MITRE ATT&CK** | — | Threat model and detection classification framework |
@@ -333,6 +343,57 @@ This project demonstrates the following defensive SOC monitoring use cases:
 | Windows authentication monitoring | Security Log | EventID 4624, 4625 |
 | Account management monitoring | Security Log | EventID 4720, 4726 |
 | Timeline-based threat hunting | Sysmon + Windows | `timechart` queries |
+| Failed SSH authentication detection | `auth.log` | `linux_secure` — "Failed password" |
+
+---
+
+## P3 — Linux Security Monitoring
+
+P3 extends the lab to a dedicated Ubuntu Server 24.04.5 LTS endpoint (`ubuntu-p3`, `192.168.100.6`), running a Splunk Universal Forwarder to stream Linux authentication, system, and audit logs into Splunk Enterprise.
+
+Full P3 documentation: [`P3-Linux-Security-Monitoring/README.md`](P3-Linux-Security-Monitoring/README.md)
+
+P3 progress log: [`docs/P3-LINUX-SECURITY-MONITORING.md`](docs/P3-LINUX-SECURITY-MONITORING.md)
+
+### P3 — Lab Roles
+
+| Role | Host | IP Address |
+|---|---|---|
+| **Linux Endpoint** | `ubuntu-p3` (Ubuntu Server 24.04.5 LTS) | `192.168.100.6` |
+| **SIEM** | Splunk Enterprise | `192.168.100.7` |
+
+### P3 — Log Collection
+
+| Log File | Sourcetype | Index |
+|---|---|---|
+| `/var/log/auth.log` | `linux_secure` | `linux_security` |
+| `/var/log/syslog` | `syslog` | `linux_security` |
+| `/var/log/audit/audit.log` | `linux:audit` | `linux_security` |
+
+### P3 — UC-01: Failed SSH Authentication Detection
+
+```spl
+index=linux_security sourcetype=linux_secure "Failed password"
+| rex "Failed password for (invalid user )?(?<username>\S+) from (?<src_ip>\d{1,3}(?:\.\d{1,3}){3})"
+| stats count as failed_attempts earliest(_time) as first_attempt latest(_time) as last_attempt by src_ip username host
+| convert ctime(first_attempt) ctime(last_attempt)
+| sort - failed_attempts
+```
+
+Extracts: source IP, targeted username, destination host, failure count, and first/last attempt timestamps. Verified against real events from `ubuntu-p3`.
+
+### P3 — Completed Work
+
+| Item | Status |
+|---|---|
+| Network connectivity (`ping`, `nc -zv 9997`) | ✅ Verified |
+| SSH access (`127.0.0.1:2223 → 192.168.100.6:22`) | ✅ Verified |
+| Splunk Universal Forwarder installed | ✅ Done |
+| Forwarder → Splunk connection (`192.168.100.7:9997`) | ✅ Active |
+| Linux log collection (`inputs.conf`) | ✅ Done |
+| `linux_security` index | ✅ Created and verified |
+| Event ingestion verification | ✅ Real events confirmed |
+| UC-01 Failed SSH Authentication SPL | ✅ Implemented |
 
 ---
 
@@ -389,41 +450,47 @@ splunk-soc-threat-hunting-lab/
 ├── .gitignore                                  # Security-sensitive file exclusions
 │
 ├── docs/
-│   └── P2-SPLUNK-SOC-INTEGRATION.md           # Progress and milestone log
+│   ├── P2-SPLUNK-SOC-INTEGRATION.md           # P2 progress and milestone log
+│   ├── P3-LINUX-SECURITY-MONITORING.md        # P3 progress and milestone log
+│   └── evidence/                               # Supporting evidence files
 │
-└── P2-Windows-Security-Monitoring/
+├── P2-Windows-Security-Monitoring/
+│   │
+│   ├── README.md                               # P2 project detail
+│   │
+│   ├── config/                                 # Forwarder configuration templates
+│   │   ├── inputs.conf                         # Event channel definitions
+│   │   ├── outputs.conf                        # Forward server configuration
+│   │   ├── indexes.conf                        # Index definitions for Splunk Enterprise
+│   │   └── windows/
+│   │       └── sysmonconfig.xml                # Sysmon XML configuration
+│   │
+│   ├── docs/                                   # Technical documentation
+│   │   ├── architecture.md                     # Network and data flow architecture
+│   │   ├── dashboard.md                        # Dashboard panel documentation
+│   │   ├── spl-queries.md                      # Verified SPL threat-hunting queries
+│   │   ├── validation.md                       # Validation and testing commands
+│   │   ├── troubleshooting.md                  # Known issues and solutions
+│   │   ├── setup.md                            # Quick-start deployment guide
+│   │   ├── splunk-forwarder.md                 # Forwarder deployment guide
+│   │   └── windows-auditing.md                 # Windows audit policy guide
+│   │
+│   ├── scripts/                                # PowerShell automation scripts
+│   │   ├── verify-splunk.ps1                   # End-to-end pipeline verification
+│   │   ├── configure-forwarder.ps1             # Forwarder configuration script
+│   │   ├── configure-audit-policy.ps1          # Windows audit policy baseline
+│   │   └── install-forwarder.ps1               # Forwarder installation script
+│   │
+│   └── screenshots/                            # Lab evidence and verification exhibits
+│       ├── p2-20-soc-threat-hunting-dashboard.png  # SOC Threat Hunting Dashboard
+│       ├── p2-01-windows11-sysmon-*.png        # Windows endpoint evidence
+│       ├── p2-17-splunk-web-login-*.png        # Splunk Web UI
+│       ├── p2-18-splunk-web-admin-*.png        # Admin dashboard
+│       └── p2-19-splunk-receiver-*.png         # Receiver port and firewall
+│
+└── P3-Linux-Security-Monitoring/
     │
-    ├── README.md                               # P2 project detail
-    │
-    ├── config/                                 # Forwarder configuration templates
-    │   ├── inputs.conf                         # Event channel definitions
-    │   ├── outputs.conf                        # Forward server configuration
-    │   ├── indexes.conf                        # Index definitions for Splunk Enterprise
-    │   └── windows/
-    │       └── sysmonconfig.xml                # Sysmon XML configuration
-    │
-    ├── docs/                                   # Technical documentation
-    │   ├── architecture.md                     # Network and data flow architecture
-    │   ├── dashboard.md                        # Dashboard panel documentation
-    │   ├── spl-queries.md                      # Verified SPL threat-hunting queries
-    │   ├── validation.md                       # Validation and testing commands
-    │   ├── troubleshooting.md                  # Known issues and solutions
-    │   ├── setup.md                            # Quick-start deployment guide
-    │   ├── splunk-forwarder.md                 # Forwarder deployment guide
-    │   └── windows-auditing.md                 # Windows audit policy guide
-    │
-    ├── scripts/                                # PowerShell automation scripts
-    │   ├── verify-splunk.ps1                   # End-to-end pipeline verification
-    │   ├── configure-forwarder.ps1             # Forwarder configuration script
-    │   ├── configure-audit-policy.ps1          # Windows audit policy baseline
-    │   └── install-forwarder.ps1               # Forwarder installation script
-    │
-    └── screenshots/                            # Lab evidence and verification exhibits
-        ├── p2-20-soc-threat-hunting-dashboard.png  # SOC Threat Hunting Dashboard
-        ├── p2-01-windows11-sysmon-*.png        # Windows endpoint evidence
-        ├── p2-17-splunk-web-login-*.png        # Splunk Web UI
-        ├── p2-18-splunk-web-admin-*.png        # Admin dashboard
-        └── p2-19-splunk-receiver-*.png         # Receiver port and firewall
+    └── README.md                               # P3 project detail and status
 ```
 
 ---
@@ -454,8 +521,10 @@ splunk-soc-threat-hunting-lab/
 
 | Item | Description |
 |---|---|
-| **Linux endpoint monitoring** | Add Ubuntu log forwarding (`auth.log`, `syslog`) — Project P3 |
-| **Brute-force detection** | Alert rules on EventID 4625 threshold — Project P4 |
+| **Linux endpoint monitoring** | Ubuntu log forwarding (`auth.log`, `syslog`, `audit.log`) — **Project P3 (In Progress)** |
+| **SSH brute-force threshold detection** | Alert on ≥ 5 failures within 5 minutes from a single source — P3 next milestone |
+| **Linux security dashboard** | Splunk dashboard for `linux_security` index — P3 next milestone |
+| **Brute-force detection (Windows)** | Alert rules on EventID 4625 threshold — Project P4 |
 | **Network threat detection** | Firewall log analysis and port scan detection — Project P5 |
 | **MITRE ATT&CK threat hunting** | Hypothesis-driven hunting across ATT&CK tactics — Project P8 |
 | **Automated adversary emulation** | Atomic Red Team execution for detection validation |
@@ -470,8 +539,8 @@ splunk-soc-threat-hunting-lab/
 | ID | Project | Status |
 |:---:|---|:---:|
 | **P1** | Splunk SOC Home Lab & Log Analysis | 🟡 In Progress |
-| **P2** | **Windows Security Monitoring + Kali Attacker Dashboard (this project)** | ✅ Complete |
-| **P3** | Linux Security Monitoring | ⚪ Planned |
+| **P2** | **Windows Security Monitoring + Kali Attacker Dashboard** | ✅ Complete |
+| **P3** | **Linux Security Monitoring (this project)** | 🟡 In Progress |
 | **P4** | Brute-Force Detection & Investigation | ⚪ Planned |
 | **P5** | Network Threat Detection | ⚪ Planned |
 | **P6** | Web Attack Detection | ⚪ Planned |
