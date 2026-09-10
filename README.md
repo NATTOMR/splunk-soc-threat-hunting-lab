@@ -262,6 +262,61 @@ Full dashboard documentation: [`docs/dashboard.md`](P2-Windows-Security-Monitori
 
 ---
 
+## P2 — Kali Attacker Activity Dashboard
+
+P2 extends the lab with a dedicated attacker-focused SOC dashboard — **Kali Attacker Activity Dashboard** — built to monitor and investigate controlled Kali Linux reconnaissance and SMB activity against the Windows 11 endpoint.
+
+### Lab Roles
+
+| Role | Host | IP Address |
+|---|---|---|
+| **Attacker** | Kali Linux | `192.168.100.6` |
+| **Victim** | Windows 11 | `192.168.100.8` |
+| **SIEM** | Splunk Enterprise | `192.168.100.7` |
+
+### Attack Simulation — Actual Tests Performed
+
+| # | Test | Command / Query | Result |
+|:---:|---|---|---|
+| 1 | Host discovery | `nmap -sn 192.168.100.8` | Windows host confirmed UP |
+| 2 | TCP reconnaissance | `nmap -sT 192.168.100.8` | Ports 135, 139, 445 open |
+| 3 | Service enumeration | `nmap -sV --top-ports 20 192.168.100.8` | RPC/SMB confirmed, target identified as Windows |
+| 4 | RPC/SMB scan | `nmap -sT -p 135,139,445 192.168.100.8` | All three ports confirmed open |
+| 5 | SMB protocol enumeration | `nmap -sT -p 445 --script smb-protocols 192.168.100.8` | SMBv2/v3 detected; SMBv1 absent |
+| 6 | Anonymous SMB attempt | `smbclient -L //192.168.100.8 -N` | `NT_STATUS_ACCESS_DENIED` — rejected |
+| 7 | Event ID 4625 detection | `index=windows "<EventID>4625</EventID>"` | Failed network authentication confirmed in Splunk |
+| 8 | Attacker IP correlation | `index=windows "192.168.100.6" "<EventID>4625</EventID>"` | Source IP, workstation `KALI`, and logon failure fields extracted |
+| 9 | SMB security-mode validation | `nmap -sT -p 445 --script smb2-security-mode 192.168.100.8` | SMB 3.1.1 — signing enabled and required |
+| 10 | Splunk investigation | `index=windows "192.168.100.6"` | All attacker-associated Windows telemetry retrieved |
+
+### Key Security Observations
+
+- **Event ID 4625** — Failed network logon from Kali (`192.168.100.6`), `LogonType: 3`, `WorkstationName: KALI`
+- **Event ID 4624** — ANONYMOUS LOGON event correlated with the SMB interaction. `TargetUserName: ANONYMOUS LOGON` — this does **not** indicate a successful authenticated logon; it reflects Windows processing the anonymous SMB negotiation phase before rejection.
+- **NTLMv1 observation** — `LmPackageName: NTLM V1` noted in the 4624 event; documented as a legacy authentication hardening observation. No Windows authentication configuration changes made in P2.
+- **SMB signing required** — Windows endpoint enforces SMB message signing, mitigating relay attacks.
+
+### Dashboard Panels
+
+| Panel | Title | Purpose |
+|:---:|---|---|
+| 1 | Kali Attacker Events | All Windows events from `192.168.100.6` |
+| 2 | Kali Failed Authentication — 4625 | Count of failed auth attempts |
+| 3 | Kali Failed Authentication Timeline | Timechart of Event ID 4625 |
+| 4 | Failed Logons by Host | 4625 events grouped by Windows host |
+| 5 | Kali Network Logons — 4624 | Network logon events from Kali IP |
+| 6 | Kali Source IP | Extracted and confirmed attacker IP |
+| 7 | Kali Authentication Events | Event-level investigation table |
+| 8 | Kali Workstation | Workstation name extracted from events |
+| 9 | Kali Attacker Activity | 1-minute timechart of all Kali telemetry |
+| 10 | Kali Attacker Activity Timeline | Extended timeline visualization |
+
+Full dashboard documentation: [`docs/kali-attacker-dashboard.md`](P2-Windows-Security-Monitoring/docs/kali-attacker-dashboard.md)
+
+P2 completion checklist: [`docs/p2-completion-checklist.md`](docs/p2-completion-checklist.md)
+
+---
+
 ## Detection Use Cases
 
 This project demonstrates the following defensive SOC monitoring use cases:
@@ -415,7 +470,7 @@ splunk-soc-threat-hunting-lab/
 | ID | Project | Status |
 |:---:|---|:---:|
 | **P1** | Splunk SOC Home Lab & Log Analysis | 🟡 In Progress |
-| **P2** | **Windows Security Monitoring (this project)** | 🟡 In Progress |
+| **P2** | **Windows Security Monitoring + Kali Attacker Dashboard (this project)** | ✅ Complete |
 | **P3** | Linux Security Monitoring | ⚪ Planned |
 | **P4** | Brute-Force Detection & Investigation | ⚪ Planned |
 | **P5** | Network Threat Detection | ⚪ Planned |
