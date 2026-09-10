@@ -42,7 +42,7 @@
 
 ## Documentation & Evidence
 
-- [ ] Dashboard screenshot copied into repository
+- [x] Dashboard screenshot copied into repository
 - [ ] Documentation final review
 - [ ] Git commit
 - [ ] Git push
