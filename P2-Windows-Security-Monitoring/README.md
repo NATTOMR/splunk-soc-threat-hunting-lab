@@ -298,7 +298,8 @@ P2-Windows-Security-Monitoring/
 │   ├── powershell/                      # Queries: Script blocks, encoded commands, execution
 │   └── processes/                       # Queries: Process creation, LOLBins, CLI arguments
 ├── reports/                             # Formal investigation writeups & forensic reports
-│   └── README.md                        # Case notes and investigation deliverables index
+│   ├── README.md                        # Case notes and investigation deliverables index
+│   └── P2-Windows-Security-Monitoring-Report.pdf # Executive & technical SOC report (PDF)
 ├── scripts/                             # Automation and verification PowerShell tools
 │   ├── README.md                        # Script usage guide and elevation requirements
 │   ├── verify-splunk.ps1                # Automated forwarder, Sysmon, permissions & TCP test
@@ -311,13 +312,22 @@ P2-Windows-Security-Monitoring/
 
 ---
 
+## 📑 Official Deliverables & Reports
+
+- 📄 **Executive & Technical SOC Report (PDF):** [`reports/P2-Windows-Security-Monitoring-Report.pdf`](reports/P2-Windows-Security-Monitoring-Report.pdf)
+- 📊 **SOC Threat Hunting Dashboard Guide:** [`docs/dashboard.md`](docs/dashboard.md)
+- 🎯 **Kali Attacker Activity Dashboard Guide:** [`docs/kali-attacker-dashboard.md`](docs/kali-attacker-dashboard.md)
+- 📸 **Visual Evidence Catalog:** [`screenshots/README.md`](screenshots/README.md)
+
+---
+
 ## 8. Master Portfolio Navigation
 
 | Milestone | Project Title | Location / Link | Status |
 |:---:|---|:---:|:---:|
 | **P1** | Splunk SOC Home Lab & Log Analysis | [NATTOMR/splunk-p1-soc-home-lab](https://github.com/NATTOMR/splunk-p1-soc-home-lab) | ✅ Completed |
-| **P2** | **Windows Security Monitoring** | *Current Directory* | 🟡 **In Progress** |
-| **P3** | Linux Security Monitoring | [Master Hub](../README.md#-project-roadmap) | ⚪ Planned |
+| **P2** | **Windows Security Monitoring** | *Current Directory* | ✅ **Completed** |
+| **P3** | [**Linux Security Monitoring**](../P3-Linux-Security-Monitoring/README.md) | [P3 Project](../P3-Linux-Security-Monitoring/README.md) | ✅ **Completed** |
 | **P4** | Brute-Force Detection & Investigation | [Master Hub](../README.md#-project-roadmap) | ⚪ Planned |
 | **P5** | Network Threat Detection | [Master Hub](../README.md#-project-roadmap) | ⚪ Planned |
 | **P6** | Web Attack Detection | [Master Hub](../README.md#-project-roadmap) | ⚪ Planned |
