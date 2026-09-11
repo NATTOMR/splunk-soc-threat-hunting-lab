@@ -53,7 +53,14 @@ This directory serves as the immutable repository of photographic evidence and v
 
 | Exhibit ID | File | Target Component | Description / Milestone Evidence |
 |:---:|---|---|---|
-| **EX-19** | [`p2-19-splunk-receiver-listen-9997-ufw-rules.png`](p2-19-splunk-receiver-listen-9997-ufw-rules.png) | Ingestion Port & Firewall | Removal of accidental self-forwarder, execution of `enable listen 9997`, socket check via `ss -lntp`, and `ufw` allow rule for `9997/tcp` from `192.168.100.0/24`. |
+---
+
+### 📊 SOC Dashboards & Investigation
+
+| Exhibit ID | File | Target Component | Description / Milestone Evidence |
+|:---:|---|---|---|
+| **EX-20** | [`p2-20-soc-threat-hunting-dashboard.png`](p2-20-soc-threat-hunting-dashboard.png) | SOC Dashboard | Primary SOC Threat Hunting operational dashboard displaying Windows and Sysmon event analytics, process creations, and authentication trends. |
+| **EX-21** | [`p2-21-kali-attacker-activity-dashboard.png`](p2-21-kali-attacker-activity-dashboard.png) | Attacker Investigation | Dedicated Kali Attacker Activity Dashboard tracking controlled adversary reconnaissance (`192.168.100.6`) against Windows endpoint (`192.168.100.8`). |
 
 ---
 

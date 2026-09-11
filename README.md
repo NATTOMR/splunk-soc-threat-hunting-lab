@@ -46,13 +46,13 @@ flowchart LR
     L --> UF2[Splunk Universal Forwarder P3]
     UF2 -->|TCP 9997| E
     E --> I[linux_security Index]
-    I --> J[Failed SSH Detection]
+    I --> J[Linux Security Monitoring Dashboard]
 ```
 
 **Data Flow:**
 
 ```
-Windows 11 Endpoint (192.168.100.8)          Ubuntu P3 (192.168.100.6)
+Windows 11 Endpoint (192.168.100.8)          Ubuntu P3 (192.168.100.9)
         │                                              │
         │  Sysmon telemetry + Windows Event Logs       │  auth.log / syslog / audit.log
         ▼                                              ▼
@@ -70,7 +70,7 @@ Splunk Universal Forwarder (UF 10.4.3)    Splunk Universal Forwarder (UF 10.4.3)
                         │
                         └──► index=linux_security (auth.log, syslog, audit.log)
                                         │
-                                        └──► UC-01: Failed SSH Authentication
+                                        └──► Linux Security Monitoring Dashboard
 ```
 
 ---
@@ -521,9 +521,7 @@ splunk-soc-threat-hunting-lab/
 
 | Item | Description |
 |---|---|
-| **Linux endpoint monitoring** | Ubuntu log forwarding (`auth.log`, `syslog`, `audit.log`) — **Project P3 (In Progress)** |
-| **SSH brute-force threshold detection** | Alert on ≥ 5 failures within 5 minutes from a single source — P3 next milestone |
-| **Linux security dashboard** | Splunk dashboard for `linux_security` index — P3 next milestone |
+| **Linux endpoint monitoring** | Ubuntu log forwarding (`auth.log`, `syslog`, `audit.log`) — [Project P3](P3-Linux-Security-Monitoring/README.md) (**Complete**) |
 | **Brute-force detection (Windows)** | Alert rules on EventID 4625 threshold — Project P4 |
 | **Network threat detection** | Firewall log analysis and port scan detection — Project P5 |
 | **MITRE ATT&CK threat hunting** | Hypothesis-driven hunting across ATT&CK tactics — Project P8 |
@@ -540,7 +538,7 @@ splunk-soc-threat-hunting-lab/
 |:---:|---|:---:|
 | **P1** | Splunk SOC Home Lab & Log Analysis | 🟡 In Progress |
 | **P2** | **Windows Security Monitoring + Kali Attacker Dashboard** | ✅ Complete |
-| **P3** | **Linux Security Monitoring (this project)** | 🟡 In Progress |
+| **P3** | [**Linux Security Monitoring**](P3-Linux-Security-Monitoring/README.md) | ✅ Complete |
 | **P4** | Brute-Force Detection & Investigation | ⚪ Planned |
 | **P5** | Network Threat Detection | ⚪ Planned |
 | **P6** | Web Attack Detection | ⚪ Planned |
