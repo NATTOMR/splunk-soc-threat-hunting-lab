@@ -361,6 +361,8 @@ P3-Linux-Security-Monitoring/
 ├── docs/
 │   ├── architecture.md                             # Comprehensive technical architecture & pipeline flow
 │   └── testing.md                                  # Testing procedures, validation logs & empirical metrics
+├── reports/
+│   └── P3-Linux-Security-Monitoring-Report.pdf     # Official executive & technical SOC incident report (PDF)
 └── screenshots/
     ├── README.md                                   # Visual evidence catalog & exhibit index
     ├── p3-01-ubuntu-p3-ssh-terminal-ip-verification.png        # Ubuntu P3 terminal exhibit (192.168.100.9)
@@ -369,6 +371,15 @@ P3-Linux-Security-Monitoring/
     ├── p3-04-linux-security-monitoring-dashboard.png           # Full-resolution Linux Security Monitoring dashboard
     └── linux-security-monitoring-dashboard.png                 # Standalone dashboard capture
 ```
+
+---
+
+## 📑 Official SOC Deliverables & Reports
+
+- 📄 **Executive & Technical SOC Report (PDF):** [`P3-Linux-Security-Monitoring-Report.pdf`](reports/P3-Linux-Security-Monitoring-Report.pdf)
+- 🏗️ **Architecture Specifications:** [`docs/architecture.md`](docs/architecture.md)
+- 🧪 **Validation & Testing Runbook:** [`docs/testing.md`](docs/testing.md)
+- 📸 **Visual Evidence Catalog:** [`screenshots/README.md`](screenshots/README.md)
 
 ---
 
