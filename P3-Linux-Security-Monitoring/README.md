@@ -7,6 +7,8 @@
 [![Index](https://img.shields.io/badge/Index-linux__security-purple.svg)](#-splunk-index--ingestion-pipeline)
 [![Dashboard](https://img.shields.io/badge/Dashboard-Linux%20Security%20Monitoring-success.svg)](#-dashboard)
 
+> **Author:** Natto Chakma  
+> **Date:** September 11, 2026  
 > **Master Portfolio Component:** This project represents **Project P3** in the [Splunk SOC & Threat Hunting Lab](../README.md). It establishes an enterprise-grade Linux endpoint security monitoring pipeline, forwarding live authentication, system daemon, and kernel audit telemetry from an Ubuntu Server endpoint into Splunk Enterprise for centralized threat detection, brute-force analysis, and operational SOC dashboarding.
 
 ---
