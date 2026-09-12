@@ -488,9 +488,13 @@ splunk-soc-threat-hunting-lab/
 │       ├── p2-18-splunk-web-admin-*.png        # Admin dashboard
 │       └── p2-19-splunk-receiver-*.png         # Receiver port and firewall
 │
-└── P3-Linux-Security-Monitoring/
+├── P3-Linux-Security-Monitoring/
+│   │
+│   └── README.md                               # P3 project detail and status
+│
+└── P4-Brute-Force-Detection/
     │
-    └── README.md                               # P3 project detail and status
+    └── README.md                               # P4 project detail and status
 ```
 
 ---
@@ -522,7 +526,7 @@ splunk-soc-threat-hunting-lab/
 | Item | Description |
 |---|---|
 | **Linux endpoint monitoring** | Ubuntu log forwarding (`auth.log`, `syslog`, `audit.log`) — [Project P3](P3-Linux-Security-Monitoring/README.md) (**Complete**) |
-| **Brute-force detection (Windows)** | Alert rules on EventID 4625 threshold — Project P4 |
+| **Brute-force detection (Windows)** | Alert rules on EventID 4625 threshold — [Project P4](P4-Brute-Force-Detection/README.md) |
 | **Network threat detection** | Firewall log analysis and port scan detection — Project P5 |
 | **MITRE ATT&CK threat hunting** | Hypothesis-driven hunting across ATT&CK tactics — Project P8 |
 | **Automated adversary emulation** | Atomic Red Team execution for detection validation |
@@ -539,7 +543,7 @@ splunk-soc-threat-hunting-lab/
 | **P1** | Splunk SOC Home Lab & Log Analysis | 🟡 In Progress |
 | **P2** | **Windows Security Monitoring + Kali Attacker Dashboard** | ✅ Complete |
 | **P3** | [**Linux Security Monitoring**](P3-Linux-Security-Monitoring/README.md) | ✅ Complete |
-| **P4** | Brute-Force Detection & Investigation | ⚪ Planned |
+| **P4** | [**Brute-Force Detection & Investigation**](P4-Brute-Force-Detection/README.md) | ⚪ Planned |
 | **P5** | Network Threat Detection | ⚪ Planned |
 | **P6** | Web Attack Detection | ⚪ Planned |
 | **P7** | Phishing Email Investigation | ⚪ Planned |

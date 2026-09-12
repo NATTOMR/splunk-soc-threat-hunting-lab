@@ -1,0 +1,39 @@
+# ==============================================================================
+# SPL DETECTION TEMPLATE: High-Volume Authentication Failures
+# Project: P4 — Brute-Force Detection & Investigation
+# Status: Candidate Template (Pending Live Telemetry Verification in P4.1 & P4.2)
+# ==============================================================================
+#
+# PURPOSE:
+#   Detect burst authentication failure activity exceeding statistical thresholds
+#   within a rolling or fixed time window (e.g., >= 10 failures in 5 minutes).
+#
+# FIELDS & PARAMETERS REQUIRING VALIDATION:
+#   - <INDEX>: Confirm active index (e.g., "windows" or "linux_security")
+#   - <TIME_SPAN>: Configurable bucket size (e.g., "span=5m" or "span=10m")
+#   - <FAILURE_THRESHOLD>: Configurable alert threshold (e.g., failure_count > 10)
+#   - <TARGET_USER>: Target user field (to be extracted / verified)
+#   - <SRC_IP>: Source IP field (to be extracted / verified)
+#
+# ==============================================================================
+
+# --- CANDIDATE TEMPLATE A: Windows High-Volume Failures (EventID 4625) ---
+#
+# index=<WINDOWS_INDEX> earliest=-1h
+# | rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+# | search EventID=4625
+# | rex field=_raw "TargetUserName\">(?<target_user>[^<]+)</Data>"
+# | rex field=_raw "IpAddress\">(?<src_ip>[^<]+)</Data>"
+# | bin _time span=5m
+# | stats count as failure_count, dc(target_user) as unique_users, values(target_user) as targets by _time, src_ip, host
+# | where failure_count >= 10
+# | sort - failure_count
+
+# --- CANDIDATE TEMPLATE B: Linux High-Volume SSH Failures (auth.log) ---
+#
+# index=<LINUX_INDEX> sourcetype=linux_secure "Failed password" earliest=-1h
+# | rex "Failed password for (invalid user )?(?<target_user>\S+) from (?<src_ip>\d{1,3}(?:\.\d{1,3}){3})"
+# | bin _time span=5m
+# | stats count as failure_count, dc(target_user) as unique_users, values(target_user) as targets by _time, src_ip, host
+# | where failure_count >= 10
+# | sort - failure_count
