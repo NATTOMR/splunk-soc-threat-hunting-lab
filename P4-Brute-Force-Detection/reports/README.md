@@ -28,4 +28,5 @@ Formal investigation reports in this repository adhere to standard SOC analyst r
 
 ## Scheduled Deliverables
 
-- **Final Investigation Report:** `reports/brute-force-investigation-report.md` (To be finalized in [P4.5](../../issues/20)).
+- **Final Investigation Report:** [`reports/brute-force-investigation-report.md`](brute-force-investigation-report.md) — Completed investigation covering the SSH password spray and targeted brute-force campaign against `ubuntu-p3`.
+

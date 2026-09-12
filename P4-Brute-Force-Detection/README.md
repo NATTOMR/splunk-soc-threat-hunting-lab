@@ -1,11 +1,13 @@
 # 🛡️ P4 — Brute-Force Detection & Investigation
 
-[![Status](https://img.shields.io/badge/Status-Scaffolded%20%7C%20Todo-yellow.svg)](#14-project-status)
+[![Status](https://img.shields.io/badge/Status-Completed%20%26%20Verified-brightgreen.svg)](#14-project-status)
 [![SIEM](https://img.shields.io/badge/SIEM-Splunk%20Enterprise%2010.4.3-blue.svg)](https://www.splunk.com/)
 [![Forwarder](https://img.shields.io/badge/Log%20Forwarder-Splunk%20UF%2010.4.3-orange.svg)](https://www.splunk.com/)
+[![Dashboard](https://img.shields.io/badge/Dashboard-Brute--Force%20Investigation-success.svg)](dashboards/README.md)
 [![Framework](https://img.shields.io/badge/Framework-MITRE%20ATT%26CK-red.svg)](https://attack.mitre.org/)
 [![Issue](https://img.shields.io/badge/GitHub%20Issue-%235-brightgreen.svg)](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/5)
 [![Project](https://img.shields.io/badge/Project-Splunk%20SOC%20Lab-purple.svg)](https://github.com/users/NATTOMR/projects/5)
+
 
 > **Author:** Natto Chakma  
 > **Master Repository Component:** This project constitutes **Project P4** in the [Splunk SOC & Threat Hunting Lab](../README.md).  
@@ -199,31 +201,34 @@ All P4 detection logic maps to adversary techniques in the MITRE ATT&CK Enterpri
 
 ---
 
-## 10. Evidence
+## 10. Evidence & Visual Exhibits
 
 Visual proof and technical artifacts are organized in dedicated directories:
-- **Screenshots:** [`screenshots/README.md`](screenshots/README.md) cataloging scheduled exhibits (`p4-01` through `p4-06`).
-- **Reports:** [`reports/README.md`](reports/README.md) defining incident reporting templates.
-- **Dashboards:** [`dashboards/README.md`](dashboards/README.md) outlining planned dashboard panels.
-- **Detections:** [`detections/README.md`](detections/README.md) documenting candidate alerting rules.
+- **Screenshots:** [`screenshots/README.md`](screenshots/README.md) cataloging verified exhibits.
+- **Reports:** [`reports/README.md`](reports/README.md) featuring the full technical incident report [`brute-force-investigation-report.md`](reports/brute-force-investigation-report.md).
+- **Dashboards:** [`dashboards/README.md`](dashboards/README.md) documenting the operational dashboard XML [`brute-force-dashboard.xml`](dashboards/brute-force-dashboard.xml).
+- **Detections:** [`detections/README.md`](detections/README.md) detailing tested alert rules.
 
-> [!NOTE]
-> In accordance with strict portfolio integrity standards, no fabricated screenshots, artificial log dumps, or staged evidence are committed. All evidence will be captured and documented during live lab validation.
+### Operational SOC Threat Hunting Dashboard
+![P4 SOC Dashboard](screenshots/p4-03-brute-force-dashboard.png)
+
+### Verified Splunk Search & Event Normalization
+![Splunk Search](screenshots/p4-02-splunk-search-telemetry.png)
 
 ---
 
 ## 11. Results
 
-*Results will be populated upon completion of live lab testing and validation in sub-issues P4.1 through P4.5.*
+Empirical results captured and validated during live lab execution:
 
-| Phase | Metric / Deliverable | Status |
-|---|---|:---:|
-| Telemetry Ingestion Verification | Validated index, sourcetype, and event fields | Pending P4.1 |
-| Attack Simulation | Controlled simulation executed and captured | Pending P4.1 |
-| SPL Detection Validation | Tested searches against real failure events | Pending P4.2 |
-| Failed-to-Success Correlation | Verified correlation against authentic sequence | Pending P4.3 |
-| SOC Investigation Execution | Complete forensic analysis and timeline reconstruction | Pending P4.4 |
-| Final Evidence & Report | Validated screenshots and technical case report | Pending P4.5 |
+| Phase | Metric / Deliverable | Verified Result | Status |
+|---|---|---|:---:|
+| **Telemetry Ingestion Verification** | Linux SSH telemetry stream (`auth.log`) | Active ingestion into `index=linux_security`, `sourcetype=linux_secure` from `ubuntu-p3` | ✅ PASS |
+| **Attack Simulation** | Controlled brute-force password spray | 13 failed attempts generated from `192.168.100.7` across 8 usernames | ✅ PASS |
+| **SPL Detection Validation** | Multi-account spray and burst queries | 100% detection rate isolating `192.168.100.7` and target accounts | ✅ PASS |
+| **Failed-to-Success Correlation** | Correlate failure burst with legitimate login | Correctly segregated `natto` from `192.168.100.1` (`SUCCESS`) against attack source | ✅ PASS |
+| **SOC Investigation Execution** | Forensic incident analysis and ATT&CK mapping | Authoring formal incident case report (`INC-2026-P4-001`) | ✅ PASS |
+| **Operational SOC Dashboard** | Dark-mode 7-panel Splunk XML dashboard | Fully deployed in Splunk Web with live metrics and charts | ✅ PASS |
 
 ---
 
@@ -250,18 +255,19 @@ Visual proof and technical artifacts are organized in dedicated directories:
 The implementation state of Project P4 is strictly categorized into lifecycle stages:
 
 ```
-[ Planned ] ──► [ In Progress ] ──► [ Implemented ] ──► [ Validated ]
+[ Planned ] ──► [ In Progress ] ──► [ Implemented ] ──► [ ✅ Validated & Complete ]
 ```
 
-### Current Status Overview: 🟡 In Progress (Scaffolded — Implementation Todo)
+### Current Status Overview: ✅ Complete & Empirically Verified
 
 | Sub-Issue | Title | Scope / Focus | Status |
 |:---:|---|---|:---:|
-| **[P4.1](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/16)** | Authentication Telemetry & Attack Simulation | Verify log sources, index, sourcetypes, fields, and controlled simulation | ⚪ Todo |
-| **[P4.2](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/17)** | Brute-Force SPL Detection | Develop & validate volume, spray, and targeted detection queries | ⚪ Todo |
-| **[P4.3](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/18)** | Failed-to-Success Correlation | Build correlation searches connecting failures to subsequent logins | ⚪ Todo |
-| **[P4.4](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/19)** | Investigation & MITRE ATT&CK Mapping | Conduct SOC-style investigation, pivot to Sysmon, map ATT&CK | ⚪ Todo |
-| **[P4.5](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/20)** | Evidence, Report & Validation | Capture authentic screenshots, compile final report, run security scan | ⚪ Todo |
+| **[P4.1](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/16)** | Authentication Telemetry & Attack Simulation | Verify log sources, index, sourcetypes, fields, and controlled simulation | ✅ Completed |
+| **[P4.2](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/17)** | Brute-Force SPL Detection | Develop & validate volume, spray, and targeted detection queries | ✅ Completed |
+| **[P4.3](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/18)** | Failed-to-Success Correlation | Build correlation searches connecting failures to subsequent logins | ✅ Completed |
+| **[P4.4](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/19)** | Investigation & MITRE ATT&CK Mapping | Conduct SOC-style investigation, pivot to Sysmon, map ATT&CK | ✅ Completed |
+| **[P4.5](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/20)** | Evidence, Report & Validation | Capture authentic screenshots, compile final report, run security scan | ✅ Completed |
+
 
 ---
 

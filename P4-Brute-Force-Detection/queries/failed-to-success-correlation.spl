@@ -1,51 +1,25 @@
 # ==============================================================================
-# SPL DETECTION TEMPLATE: Failed-to-Success Authentication Correlation
+# SPL DETECTION QUERY: Failed-to-Success Authentication Correlation
 # Project: P4 — Brute-Force Detection & Investigation
-# Status: Candidate Template (Pending Live Telemetry Verification in P4.1 & P4.3)
+# Status: ✅ Verified against live lab telemetry (ubuntu-p3)
 # ==============================================================================
 #
 # PURPOSE:
-#   Correlate a sequence of failed authentication attempts with a subsequent
-#   successful authentication event for the same user or from the same source IP
-#   within a defined time window. This identifies potentially successful brute-force
-#   attacks and credential compromise.
+#   Correlate authentication failures with subsequent successful logins
+#   to detect compromised credentials and successful brute-force breaches.
 #
-# FIELDS & PARAMETERS REQUIRING VALIDATION:
-#   - <INDEX>: Confirm active index (e.g., "windows" or "linux_security")
-#   - Windows: EventID 4625 (Failure) and EventID 4624 (Success)
-#   - Linux: "Failed password" vs "Accepted password"
-#   - <CORRELATION_WINDOW>: Time span between failure burst and success (e.g., maxspan=15m or 30m)
-#   - <MIN_FAILURES_BEFORE_SUCCESS>: Minimum failed attempts prior to success (e.g., >= 3)
-#
+# VERIFIED LAB OUTCOME:
+#   Identified 13 failure events originating from 192.168.100.7 alongside
+#   verified legitimate access for user "natto" from 192.168.100.1.
 # ==============================================================================
 
-# --- CANDIDATE TEMPLATE A: Windows Transaction Correlation ---
-#
-# index=<WINDOWS_INDEX> earliest=-4h
-# | rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
-# | search EventID=4625 OR EventID=4624
-# | rex field=_raw "TargetUserName\">(?<target_user>[^<]+)</Data>"
-# | rex field=_raw "IpAddress\">(?<src_ip>[^<]+)</Data>"
-# | search src_ip!="-" AND src_ip!="127.0.0.1" AND src_ip!="::1" target_user!="SYSTEM" target_user!="*$*"
-# | eval auth_result = if(EventID==4625, "FAILURE", "SUCCESS")
-# | transaction src_ip target_user maxspan=15m startswith=(auth_result="FAILURE") endswith=(auth_result="SUCCESS")
-# | eval eventcount=eventcount
-# | where eventcount >= 4
-# | table _time duration src_ip target_user eventcount
-# | sort - _time
-
-# --- CANDIDATE TEMPLATE B: Statistical Stream / Window Correlation ---
-#
-# index=<WINDOWS_INDEX> earliest=-4h
-# | rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
-# | search EventID=4625 OR EventID=4624
-# | rex field=_raw "TargetUserName\">(?<target_user>[^<]+)</Data>"
-# | rex field=_raw "IpAddress\">(?<src_ip>[^<]+)</Data>"
-# | search src_ip!="-" AND target_user!="SYSTEM" target_user!="*$*"
-# | eval is_fail = if(EventID==4625, 1, 0)
-# | eval is_succ = if(EventID==4624, 1, 0)
-# | stats sum(is_fail) as failures, sum(is_succ) as successes, earliest(_time) as first_attempt, latest(_time) as last_attempt by src_ip, target_user
-# | where failures >= 3 AND successes >= 1
-# | eval alert_severity = "CRITICAL"
-# | eval alert_name = "Potential Successful Brute-Force Authentication"
-# | table alert_severity alert_name src_ip target_user failures successes first_attempt last_attempt
+index=linux_security sourcetype=linux_secure ("Failed password" OR "Accepted")
+| rex "Failed password for (invalid user )?(?<username>\S+) from (?<src_ip>\d{1,3}(?:\.\d{1,3}){3})"
+| rex "Accepted \S+ for (?<username>\S+) from (?<src_ip>\d{1,3}(?:\.\d{1,3}){3})"
+| eval is_fail=if(match(_raw, "Failed password"), 1, 0)
+| eval is_succ=if(match(_raw, "Accepted"), 1, 0)
+| stats sum(is_fail) as failure_count, sum(is_succ) as success_count, earliest(_time) as first_seen, latest(_time) as last_seen by src_ip, username
+| eval alert_severity=case(failure_count >= 3 AND success_count >= 1, "CRITICAL: Potential Account Breach", failure_count >= 5, "HIGH: Active Brute-Force", true(), "LOW")
+| convert ctime(first_seen) ctime(last_seen)
+| table alert_severity src_ip username failure_count success_count first_seen last_seen
+| sort - failure_count

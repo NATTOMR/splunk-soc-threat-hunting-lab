@@ -1,0 +1,155 @@
+<dashboard version="1.1" theme="dark">
+  <label>P4 — Brute-Force Detection &amp; Investigation</label>
+  <description>Operational SOC Threat Hunting Dashboard: Authentication telemetry, password spray detection, and failed-to-success correlation.</description>
+  
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="time_tok" searchWhenChanged="true">
+      <label>Time Range</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <single>
+        <title>Total Authentication Failures</title>
+        <search>
+          <query>
+            index=linux_security sourcetype=linux_secure "Failed password"
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Failed Login Attempts</option>
+      </single>
+    </panel>
+    
+    <panel>
+      <single>
+        <title>Successful Logins</title>
+        <search>
+          <query>
+            index=linux_security sourcetype=linux_secure "Accepted"
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Legitimate Authentications</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Distinct Targeted Accounts</title>
+        <search>
+          <query>
+            index=linux_security sourcetype=linux_secure "Failed password"
+            | rex "Failed password for (invalid user )?(?&lt;username&gt;\S+)"
+            | stats dc(username) as targets
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[2,5]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Spray Target Diversity</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <chart>
+        <title>Authentication Attempts by Targeted Username</title>
+        <search>
+          <query>
+            index=linux_security sourcetype=linux_secure "Failed password"
+            | rex "Failed password for (invalid user )?(?&lt;username&gt;\S+) from (?&lt;src_ip&gt;\d{1,3}(?:\.\d{1,3}){3})"
+            | stats count by username
+            | sort - count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="charting.axisTitleX.text">Failure Count</option>
+        <option name="charting.axisTitleY.text">Target User</option>
+      </chart>
+    </panel>
+
+    <panel>
+      <chart>
+        <title>Offending Source IP Addresses</title>
+        <search>
+          <query>
+            index=linux_security sourcetype=linux_secure "Failed password"
+            | rex "Failed password for (invalid user )?(?&lt;username&gt;\S+) from (?&lt;src_ip&gt;\d{1,3}(?:\.\d{1,3}){3})"
+            | stats count by src_ip
+            | sort - count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <chart>
+        <title>Authentication Timeline (Success vs. Failure)</title>
+        <search>
+          <query>
+            index=linux_security sourcetype=linux_secure ("Failed password" OR "Accepted")
+            | eval auth_status=if(match(_raw, "Accepted"), "SUCCESS", "FAILURE")
+            | timechart count by auth_status
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Attempt Velocity</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <table>
+        <title>Live Authentication Triage Stream</title>
+        <search>
+          <query>
+            index=linux_security sourcetype=linux_secure ("Failed password" OR "Accepted")
+            | rex "Failed password for (invalid user )?(?&lt;username&gt;\S+) from (?&lt;src_ip&gt;\d{1,3}(?:\.\d{1,3}){3})"
+            | rex "Accepted \S+ for (?&lt;username&gt;\S+) from (?&lt;src_ip&gt;\d{1,3}(?:\.\d{1,3}){3})"
+            | eval auth_status=if(match(_raw, "Accepted"), "SUCCESS", "FAILURE")
+            | table _time src_ip username auth_status host
+            | sort - _time
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">10</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

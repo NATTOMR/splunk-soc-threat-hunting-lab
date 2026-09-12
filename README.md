@@ -543,7 +543,7 @@ splunk-soc-threat-hunting-lab/
 | **P1** | Splunk SOC Home Lab & Log Analysis | 🟡 In Progress |
 | **P2** | **Windows Security Monitoring + Kali Attacker Dashboard** | ✅ Complete |
 | **P3** | [**Linux Security Monitoring**](P3-Linux-Security-Monitoring/README.md) | ✅ Complete |
-| **P4** | [**Brute-Force Detection & Investigation**](P4-Brute-Force-Detection/README.md) | ⚪ Planned |
+| **P4** | [**Brute-Force Detection & Investigation**](P4-Brute-Force-Detection/README.md) | ✅ Complete |
 | **P5** | Network Threat Detection | ⚪ Planned |
 | **P6** | Web Attack Detection | ⚪ Planned |
 | **P7** | Phishing Email Investigation | ⚪ Planned |

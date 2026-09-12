@@ -22,13 +22,20 @@ All screenshots added to this directory must satisfy the following criteria:
 
 ---
 
-## Planned Evidence Inventory
+## Verified Evidence Inventory
 
-| Exhibit ID | Scheduled Capture | Objective | Sub-Issue |
-|---|---|---|:---:|
-| `p4-01-attack-simulation.png` | Kali / attack script output | Evidence of controlled brute-force simulation | [P4.1](../../issues/16) |
-| `p4-02-raw-4625-telemetry.png` | Splunk Search: EventID 4625 | Verified Windows failure event ingestion | [P4.1](../../issues/16) |
-| `p4-03-high-volume-detection.png` | Splunk Search: Velocity query | Detection rule triggering on burst failures | [P4.2](../../issues/17) |
-| `p4-04-source-ip-spray.png` | Splunk Search: Spray analysis | Source IP profiling distinguishing spray vs targeted | [P4.2](../../issues/17) |
-| `p4-05-failed-to-success-corr.png` | Splunk Search: Correlation | Sequence of failures followed by success | [P4.3](../../issues/18) |
-| `p4-06-brute-force-dashboard.png` | Splunk Web Dashboard View | Complete SOC Brute-Force Investigation Dashboard | [P4.5](../../issues/20) |
+| Exhibit ID | File Reference | Description | Status |
+|:---:|---|---|:---:|
+| **EX-P4-01** | [`p4-02-splunk-search-telemetry.png`](p4-02-splunk-search-telemetry.png) | Splunk Search & Reporting showing parsed authentication failure events and legitimate login from `index=linux_security` (14 events matched). | ✅ Verified |
+| **EX-P4-02** | [`p4-03-brute-force-dashboard.png`](p4-03-brute-force-dashboard.png) *(also [`brute-force-dashboard.png`](brute-force-dashboard.png))* | Full-screen view of the operational dark-mode **P4 — Brute-Force Detection & Investigation** SOC dashboard with all 7 panels populated. | ✅ Verified |
+
+---
+
+## Visual Exhibits
+
+### Exhibit 1: Live Splunk Search & Field Extraction
+![Splunk Search Telemetry](p4-02-splunk-search-telemetry.png)
+
+### Exhibit 2: Operational SOC Threat Hunting Dashboard
+![SOC Brute-Force Dashboard](p4-03-brute-force-dashboard.png)
+
