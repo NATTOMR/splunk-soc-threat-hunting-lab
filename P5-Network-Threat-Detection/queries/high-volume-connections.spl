@@ -1,0 +1,21 @@
+# ==============================================================================
+# SPL DETECTION TEMPLATE: High-Volume Network Connection Bursts
+# Project: P5 — Network Threat Detection with Splunk
+# Status: Candidate Template (Pending Live Telemetry Verification in P5.1)
+# ==============================================================================
+#
+# PURPOSE:
+#   Detect abnormal connection velocity bursts from a single source host,
+#   indicating automated fuzzing, network denial-of-service, or aggressive enumeration.
+# ==============================================================================
+
+# --- CANDIDATE TEMPLATE: Network Connection Velocity ---
+# index=sysmon earliest=-1h
+# | rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+# | search EventID=3
+# | rex field=_raw "SourceIp\">(?<src_ip>[^<]+)</Data>"
+# | rex field=_raw "DestinationIp\">(?<dest_ip>[^<]+)</Data>"
+# | bin _time span=5m
+# | stats count as connection_count by _time, src_ip, dest_ip
+# | where connection_count >= 50
+# | sort - connection_count

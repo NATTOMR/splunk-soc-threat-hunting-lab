@@ -1,0 +1,22 @@
+# ==============================================================================
+# SPL DETECTION TEMPLATE: Repeated Connections to Uncommon / Suspicious Ports
+# Project: P5 — Network Threat Detection with Splunk
+# Status: Candidate Template (Pending Live Telemetry Verification in P5.1)
+# ==============================================================================
+#
+# PURPOSE:
+#   Filter out standard service ports (e.g. 80, 443, 53, 22, 3389, 445) and isolate
+#   connections to non-standard, ephemeral, or known backdoor ports.
+# ==============================================================================
+
+# --- CANDIDATE TEMPLATE: Non-Standard Port Traffic ---
+# index=sysmon earliest=-24h
+# | rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+# | search EventID=3
+# | rex field=_raw "DestinationPort\">(?<dest_port>\d+)</Data>"
+# | rex field=_raw "DestinationIp\">(?<dest_ip>[^<]+)</Data>"
+# | rex field=_raw "SourceIp\">(?<src_ip>[^<]+)</Data>"
+# | rex field=_raw "Image\">(?<process_path>[^<]+)</Data>"
+# | search NOT dest_port IN (80, 443, 53, 88, 389, 445, 135, 139, 22, 3389, 8089, 9997, 18000)
+# | stats count as probe_count, values(process_path) as initiating_processes by dest_port, dest_ip, src_ip
+# | sort - probe_count

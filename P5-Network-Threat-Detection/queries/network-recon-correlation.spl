@@ -1,0 +1,20 @@
+# ==============================================================================
+# SPL DETECTION TEMPLATE: Reconnaissance & Process Execution Correlation
+# Project: P5 — Network Threat Detection with Splunk
+# Status: Candidate Template (Pending Live Telemetry Verification in P5.1)
+# ==============================================================================
+#
+# PURPOSE:
+#   Correlate incoming port probes with follow-up process executions
+#   or outbound callback traffic, identifying reconnaissance transitioning to exploitation.
+# ==============================================================================
+
+# --- CANDIDATE TEMPLATE: Cross-Event Network & Process Correlation ---
+# index=sysmon (EventID=3 OR EventID=1) earliest=-4h
+# | rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+# | rex field=_raw "SourceIp\">(?<src_ip>[^<]+)</Data>"
+# | rex field=_raw "Image\">(?<process_name>[^<]+)</Data>"
+# | rex field=_raw "CommandLine\">(?<cmdline>[^<]+)</Data>"
+# | eval event_type=if(EventID==3, "NETWORK_CONNECTION", "PROCESS_CREATION")
+# | table _time event_type src_ip process_name cmdline
+# | sort - _time
