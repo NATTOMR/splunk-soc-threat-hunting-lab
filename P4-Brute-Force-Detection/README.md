@@ -203,11 +203,11 @@ All P4 detection logic maps to adversary techniques in the MITRE ATT&CK Enterpri
 
 ## 10. Evidence & Visual Exhibits
 
-Visual proof and technical artifacts are organized in dedicated directories:
-- **Screenshots:** [`screenshots/README.md`](screenshots/README.md) cataloging verified exhibits.
-- **Reports:** [`reports/README.md`](reports/README.md) featuring the full technical incident report [`brute-force-investigation-report.md`](reports/brute-force-investigation-report.md).
-- **Dashboards:** [`dashboards/README.md`](dashboards/README.md) documenting the operational dashboard XML [`brute-force-dashboard.xml`](dashboards/brute-force-dashboard.xml).
-- **Detections:** [`detections/README.md`](detections/README.md) detailing tested alert rules.
+- **Executive & Technical SOC Report (PDF):** [📄 `P4-Brute-Force-Detection-Report.pdf`](reports/P4-Brute-Force-Detection-Report.pdf)
+- **Incident Investigation Report:** [`reports/brute-force-investigation-report.md`](reports/brute-force-investigation-report.md)
+- **Operational Dashboard XML:** [`dashboards/brute-force-dashboard.xml`](dashboards/brute-force-dashboard.xml)
+- **Verified Screenshots Catalog:** [`screenshots/README.md`](screenshots/README.md)
+- **Detection Alert Rules:** [`detections/README.md`](detections/README.md)
 
 ### Operational SOC Threat Hunting Dashboard
 ![P4 SOC Dashboard](screenshots/p4-03-brute-force-dashboard.png)

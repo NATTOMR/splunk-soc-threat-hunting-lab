@@ -26,7 +26,9 @@ Formal investigation reports in this repository adhere to standard SOC analyst r
 
 ---
 
-## Scheduled Deliverables
+## Deliverables
 
-- **Final Investigation Report:** [`reports/brute-force-investigation-report.md`](brute-force-investigation-report.md) — Completed investigation covering the SSH password spray and targeted brute-force campaign against `ubuntu-p3`.
+- 📄 **Official Executive & Technical SOC Report (PDF):** [`P4-Brute-Force-Detection-Report.pdf`](P4-Brute-Force-Detection-Report.pdf) — Complete publication-ready SOC incident report with embedded high-resolution Splunk telemetry and dashboard exhibits.
+- 📝 **Markdown Incident Report:** [`brute-force-investigation-report.md`](brute-force-investigation-report.md) — Technical case documentation covering the SSH password spray and targeted brute-force campaign against `ubuntu-p3`.
+
 
