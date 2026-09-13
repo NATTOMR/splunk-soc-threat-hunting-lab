@@ -15,7 +15,7 @@ This directory houses the formal security incident investigation reports, analys
 
 | Report ID | Title | Format | Status | Primary Focus |
 |:---:|---|:---:|:---:|---|
-| **INC-2026-P5-001** | [Network Reconnaissance & Threat Detection Report](network-threat-investigation-report.md) | Markdown | ✅ Complete | Triage of Kali Linux (`192.168.100.6`) vertical port scan, uncommon port traffic, and velocity bursts against Windows 11 (`192.168.100.8`). |
+| **INC-2026-P5-001** | **Network Reconnaissance & Threat Detection Report** | [**PDF**](P5-Network-Threat-Detection-Report.pdf) \| [HTML](P5-Network-Threat-Detection-Report.html) \| [Markdown](network-threat-investigation-report.md) | ✅ Complete | Triage of Kali Linux (`192.168.100.6`) vertical port scan, uncommon port traffic, and velocity bursts against Windows 11 (`192.168.100.8`). |
 
 ---
 
