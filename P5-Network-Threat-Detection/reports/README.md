@@ -1,32 +1,27 @@
-# Investigation Reports — Network Threat Incidents
+# Technical Reports & Incident Documentation — Network Threat Detection
 
 > **Project:** P5 — Network Threat Detection with Splunk  
-> **Status:** Report Templates Defined (Live Incident Findings in P5.5)  
-> **Rule:** No fabricated findings, synthetic incidents, or unverified conclusions will be documented.
+> **Status:** ✅ Report Completed & Verified
 
 ---
 
 ## Overview
 
-This directory stores formal SOC investigation reports, threat hunt summaries, and technical incident documentation generated during network threat detection and traffic investigation exercises.
+This directory houses the formal security incident investigation reports, analyst playbooks, and threat-hunting documentation produced during Project P5.
 
 ---
 
-## Report Structure Standards
+## Published Reports
 
-Formal network threat reports adhere to professional SOC analyst reporting standards:
-
-1. **Executive Summary:** High-level summary of the detected network threat, attack timeline, affected assets, and potential impact.
-2. **Reconnaissance & Threat Scope:** Targeted subnets and endpoints, scanned ports, source IP attribution, scan duration, and connection velocity.
-3. **Detection & Forensic Telemetry:** Exact SPL queries executed, event timelines, and network telemetry artifacts (Sysmon Event ID 3, Linux iptables/UFW, network logs).
-4. **Outcome Analysis & Compromise Status:** Assessment of whether any target ports were open, connections established, or if any follow-on exploitation occurred.
-5. **MITRE ATT&CK Alignment:** Detailed mapping to adversary tactics and techniques (T1595, T1046, T1018, T1571, T1498).
-6. **Remediation & Containment Actions:** Firewall block rules, host network isolation, and service hardening.
-7. **Recommendations & Preventive Controls:** Network segmentation, egress filtering, microsegmentation, and IDS/IPS tuning.
+| Report ID | Title | Format | Status | Primary Focus |
+|:---:|---|:---:|:---:|---|
+| **INC-2026-P5-001** | [Network Reconnaissance & Threat Detection Report](network-threat-investigation-report.md) | Markdown | ✅ Complete | Triage of Kali Linux (`192.168.100.6`) vertical port scan, uncommon port traffic, and velocity bursts against Windows 11 (`192.168.100.8`). |
 
 ---
 
-## Deliverables (Scheduled in P5.5)
+## Key Investigation Highlights
 
-- 📄 **Official Executive & Technical SOC Report (PDF):** `P5-Network-Threat-Detection-Report.pdf`
-- 📝 **Markdown Incident Report:** `network-threat-investigation-report.md`
+- **Adversary Activity:** Multi-port active reconnaissance targeting SSH (`22`) and RDP (`3389`), coupled with high-volume PowerShell socket bursts over TCP `8000`.
+- **Telemetry Utilized:** Sysmon Event ID 3 (NetworkConnect) ingested via Splunk Universal Forwarder with XML field extraction.
+- **MITRE ATT&CK Mapping:** T1595.002 (Port Scanning), T1046 (Network Service Discovery), T1571 (Non-Standard Port), T1498 (Network DoS).
+- **Remediation Plan:** Host firewall scoping, AppLocker/CLM PowerShell hardening, and automated Splunk alert deployment.

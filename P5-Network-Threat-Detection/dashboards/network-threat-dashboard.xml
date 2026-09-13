@@ -1,0 +1,207 @@
+<dashboard version="1.1" theme="dark">
+  <label>P5 — Network Threat Detection &amp; Monitoring</label>
+  <description>SOC Threat Hunting Dashboard: Real-time network telemetry, port reconnaissance detection, and traffic anomaly analysis.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="time_tok" searchWhenChanged="true">
+      <label>Time Range</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+
+  <!-- Row 1: Key Metric KPI Cards -->
+  <row>
+    <panel>
+      <single>
+        <title>Total Network Connections</title>
+        <search>
+          <query>
+            index=sysmon
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=3
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Sysmon Event ID 3 Connections</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Scanned / Probed Ports (Distinct)</title>
+        <search>
+          <query>
+            index=sysmon
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=3
+            | rex field=_raw "&lt;Data Name=['\"]DestinationPort['\"]&gt;(?&lt;dest_port&gt;\d+)&lt;/Data&gt;"
+            | stats dc(dest_port) as unique_ports
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[5,15]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Unique Destination Ports</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Suspicious / Non-Standard Ports</title>
+        <search>
+          <query>
+            index=sysmon
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=3
+            | rex field=_raw "&lt;Data Name=['\"]DestinationPort['\"]&gt;(?&lt;dest_port&gt;\d+)&lt;/Data&gt;"
+            | search NOT dest_port IN (80, 443, 53, 88, 389, 445, 135, 139, 22, 3389, 8089, 9997, 18000, 47001)
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[1,10]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Uncommon Port Hits</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- Row 2: Visual Traffic Analytics -->
+  <row>
+    <panel>
+      <chart>
+        <title>Connection Velocity Over Time (5m Interval)</title>
+        <search>
+          <query>
+            index=sysmon
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=3
+            | timechart span=5m count as connection_rate
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Connections / 5m</option>
+      </chart>
+    </panel>
+
+    <panel>
+      <chart>
+        <title>Top Probed Destination Ports</title>
+        <search>
+          <query>
+            index=sysmon
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=3
+            | rex field=_raw "&lt;Data Name=['\"]DestinationPort['\"]&gt;(?&lt;dest_port&gt;\d+)&lt;/Data&gt;"
+            | stats count by dest_port
+            | sort - count
+            | head 10
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="charting.axisTitleX.text">Destination Port</option>
+        <option name="charting.axisTitleY.text">Count</option>
+      </chart>
+    </panel>
+
+    <panel>
+      <chart>
+        <title>Top Source IP Addresses</title>
+        <search>
+          <query>
+            index=sysmon
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=3
+            | rex field=_raw "&lt;Data Name=['\"]SourceIp['\"]&gt;(?&lt;src_ip&gt;[^&lt;]+)&lt;/Data&gt;"
+            | stats count by src_ip
+            | sort - count
+            | head 10
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+
+  <!-- Row 3: Vertical Port Scan Detection Panel -->
+  <row>
+    <panel>
+      <table>
+        <title>🚨 Port Scan &amp; Reconnaissance Alerts (Distinct Ports &gt;= 2)</title>
+        <search>
+          <query>
+            index=sysmon
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=3
+            | rex field=_raw "&lt;Data Name=['\"]SourceIp['\"]&gt;(?&lt;src_ip&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name=['\"]DestinationIp['\"]&gt;(?&lt;dest_ip&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name=['\"]DestinationPort['\"]&gt;(?&lt;dest_port&gt;\d+)&lt;/Data&gt;"
+            | stats count as total_probes, dc(dest_port) as scanned_ports, values(dest_port) as target_ports by src_ip, dest_ip
+            | where scanned_ports &gt;= 2
+            | sort - scanned_ports
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <format type="color" field="scanned_ports">
+          <colorPalette type="minMidMax" maxColor="#DC4E41" minColor="#53A051"></colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <!-- Row 4: Real-Time Telemetry Triage Stream -->
+  <row>
+    <panel>
+      <table>
+        <title>Network Reconnaissance Live Triage Stream</title>
+        <search>
+          <query>
+            index=sysmon
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=3
+            | rex field=_raw "&lt;Data Name=['\"]SourceIp['\"]&gt;(?&lt;src_ip&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name=['\"]DestinationIp['\"]&gt;(?&lt;dest_ip&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name=['\"]DestinationPort['\"]&gt;(?&lt;dest_port&gt;\d+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name=['\"]Image['\"]&gt;(?&lt;process_image&gt;[^&lt;]+)&lt;/Data&gt;"
+            | table _time, src_ip, dest_ip, dest_port, process_image
+            | sort - _time
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">15</option>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

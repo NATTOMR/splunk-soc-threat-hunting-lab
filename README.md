@@ -526,8 +526,8 @@ splunk-soc-threat-hunting-lab/
 | Item | Description |
 |---|---|
 | **Linux endpoint monitoring** | Ubuntu log forwarding (`auth.log`, `syslog`, `audit.log`) — [Project P3](P3-Linux-Security-Monitoring/README.md) (**Complete**) |
-| **Brute-force detection (Windows)** | Alert rules on EventID 4625 threshold — [Project P4](P4-Brute-Force-Detection/README.md) |
-| **Network threat detection** | Firewall log analysis, network connection monitoring, and port scan detection — [Project P5](P5-Network-Threat-Detection/README.md) (In Progress) |
+| **Brute-force detection (Windows)** | Alert rules on EventID 4625 threshold — [Project P4](P4-Brute-Force-Detection/README.md) (**Complete**) |
+| **Network threat detection** | Sysmon EID 3 connection monitoring, velocity spikes, and port scan detection — [Project P5](P5-Network-Threat-Detection/README.md) (**Complete**) |
 | **MITRE ATT&CK threat hunting** | Hypothesis-driven hunting across ATT&CK tactics — Project P8 |
 | **Automated adversary emulation** | Atomic Red Team execution for detection validation |
 | **Sigma rule conversion** | Translate community Sigma rules to Splunk SPL |
@@ -544,7 +544,7 @@ splunk-soc-threat-hunting-lab/
 | **P2** | **Windows Security Monitoring + Kali Attacker Dashboard** | ✅ Complete |
 | **P3** | [**Linux Security Monitoring**](P3-Linux-Security-Monitoring/README.md) | ✅ Complete |
 | **P4** | [**Brute-Force Detection & Investigation**](P4-Brute-Force-Detection/README.md) | ✅ Complete |
-| **P5** | [**Network Threat Detection with Splunk**](P5-Network-Threat-Detection/README.md) | 🟡 In Progress |
+| **P5** | [**Network Threat Detection with Splunk**](P5-Network-Threat-Detection/README.md) | ✅ Complete |
 | **P6** | Web Attack Detection | ⚪ Planned |
 | **P7** | Phishing Email Investigation | ⚪ Planned |
 | **P8** | MITRE ATT&CK Threat Hunting | ⚪ Planned |

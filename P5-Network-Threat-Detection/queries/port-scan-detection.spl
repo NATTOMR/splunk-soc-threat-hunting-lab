@@ -1,38 +1,20 @@
 # ==============================================================================
-# SPL DETECTION TEMPLATE: Port Scanning & Network Reconnaissance
+# SPL DETECTION: Port Scanning & Network Reconnaissance
 # Project: P5 — Network Threat Detection with Splunk
-# Status: Candidate Template (Pending Live Telemetry Verification in P5.1)
+# Status: Verified Production Query (Sysmon Event ID 3)
 # ==============================================================================
 #
 # PURPOSE:
-#   Detect horizontal (one port across many IPs) or vertical (many ports on one IP)
-#   port scanning activity by aggregating distinct destination ports per source IP.
-#
-# FIELDS REQUIRING VALIDATION:
-#   - <INDEX>: sysmon or linux_security / network
-#   - <SOURCETYPE>: XmlWinEventLog:Microsoft-Windows-Sysmon/Operational or ufw/firewall
-#   - <SRC_IP>: Source IP address
-#   - <DEST_IP>: Destination IP address
-#   - <DEST_PORT>: Destination port number
-#   - <SCAN_THRESHOLD>: Distinct destination ports threshold (e.g. >= 10 in 5m)
+#   Detect horizontal or vertical port scanning activity by aggregating
+#   distinct destination ports per source IP within a rolling time window.
 # ==============================================================================
 
-# --- CANDIDATE TEMPLATE A: Sysmon Network Connection (Event ID 3) ---
-# index=sysmon earliest=-1h
-# | rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
-# | search EventID=3
-# | rex field=_raw "SourceIp\">(?<src_ip>[^<]+)</Data>"
-# | rex field=_raw "DestinationIp\">(?<dest_ip>[^<]+)</Data>"
-# | rex field=_raw "DestinationPort\">(?<dest_port>\d+)</Data>"
-# | stats count as connection_attempts, dc(dest_port) as unique_ports_scanned, values(dest_port) as sampled_ports by src_ip, dest_ip
-# | where unique_ports_scanned >= 10
-# | sort - unique_ports_scanned
-
-# --- CANDIDATE TEMPLATE B: Linux UFW / Firewall Dropped Connections ---
-# index=linux_security (sourcetype=syslog OR sourcetype=ufw) "[UFW BLOCK]"
-# | rex "SRC=(?<src_ip>\d{1,3}(?:\.\d{1,3}){3})"
-# | rex "DST=(?<dest_ip>\d{1,3}(?:\.\d{1,3}){3})"
-# | rex "DPT=(?<dest_port>\d+)"
-# | stats count as blocked_probes, dc(dest_port) as scanned_ports by src_ip, dest_ip
-# | where scanned_ports >= 10
-# | sort - scanned_ports
+index=sysmon earliest=-1h
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| search EventID=3
+| rex field=_raw "<Data Name=['\"]SourceIp['\"]>(?<src_ip>[^<]+)</Data>"
+| rex field=_raw "<Data Name=['\"]DestinationIp['\"]>(?<dest_ip>[^<]+)</Data>"
+| rex field=_raw "<Data Name=['\"]DestinationPort['\"]>(?<dest_port>\d+)</Data>"
+| stats count as connection_attempts, dc(dest_port) as unique_ports_scanned, values(dest_port) as sampled_ports by src_ip, dest_ip
+| where unique_ports_scanned >= 2
+| sort - unique_ports_scanned

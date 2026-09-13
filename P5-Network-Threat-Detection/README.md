@@ -1,9 +1,10 @@
 # 🌐 P5 — Network Threat Detection with Splunk
 
-[![Status](https://img.shields.io/badge/Status-In%20Progress%20(Scaffolded)-yellow.svg)](#14-project-status)
+[![Status](https://img.shields.io/badge/Status-Completed%20%26%20Verified-brightgreen.svg)](#14-project-status)
 [![SIEM](https://img.shields.io/badge/SIEM-Splunk%20Enterprise%2010.4.3-blue.svg)](https://www.splunk.com/)
 [![Forwarder](https://img.shields.io/badge/Log%20Forwarder-Splunk%20UF%2010.4.3-orange.svg)](https://www.splunk.com/)
 [![Dashboard](https://img.shields.io/badge/Dashboard-Network%20Threat%20Monitoring-success.svg)](dashboards/README.md)
+[![Report](https://img.shields.io/badge/Report-Incident%20Report-blue.svg)](reports/network-threat-investigation-report.md)
 [![Framework](https://img.shields.io/badge/Framework-MITRE%20ATT%26CK-red.svg)](https://attack.mitre.org/)
 [![Issue](https://img.shields.io/badge/GitHub%20Issue-%236-brightgreen.svg)](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/6)
 [![Project](https://img.shields.io/badge/Project-Splunk%20SOC%20Lab-purple.svg)](https://github.com/users/NATTOMR/projects/5)
@@ -152,13 +153,20 @@ Production-grade SPL detection queries are available in [queries/](queries/):
 ## 10. Evidence
 
 Authentic photographic evidence and screenshots are curated in [screenshots/README.md](screenshots/README.md):
-- Pending execution in sub-issues P5.1 through P5.5.
+- **EX-P5-01:** [`p5-01-network-threat-monitoring-dashboard.png`](screenshots/p5-01-network-threat-monitoring-dashboard.png) — Full operational SOC dashboard showing 116 events, velocity spike, and triage stream.
+- **EX-P5-02:** [`p5-02-port-scan-detection-search.png`](screenshots/p5-02-port-scan-detection-search.png) — SPL detection query identifying port scan reconnaissance from Kali Linux (`192.168.100.6`).
+- **EX-P5-03:** [`p5-03-sysmon-eid3-telemetry-extraction.png`](screenshots/p5-03-sysmon-eid3-telemetry-extraction.png) — Sysmon Event ID 3 XML regex parsing and field extraction.
 
 ---
 
 ## 11. Results
 
-*(To be populated following live execution and verification in sub-issue P5.5)*
+- **116 Sysmon Event ID 3 Connections:** Ingested and parsed from Windows 11 endpoint with sub-second latency.
+- **6 Distinct Ports Probed:** Probed ports (`22`, `80`, `443`, `3389`, `8000`, `47001`) surfaced in dashboard visualizations.
+- **26 Suspicious High Port Hits:** Isolated uncommon traffic (TCP `8000` via `powershell.exe`) triggering bright red alert KPI cards.
+- **50 Connections/5m Velocity Burst:** Successfully captured automated high-volume network bursts on timecharts.
+- **Operational SOC Dashboard:** Fully functioning Classic Simple XML dark-theme dashboard deployed in Splunk Web.
+- **Incident Investigation Report:** Formal incident documentation published in [reports/network-threat-investigation-report.md](reports/network-threat-investigation-report.md).
 
 ---
 
@@ -180,11 +188,11 @@ Authentic photographic evidence and screenshots are curated in [screenshots/READ
 
 | Phase / Sub-Issue | Focus Area | Status | Deliverables |
 |---|---|:---:|---|
-| **[#21](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/21) P5.1** | Network Telemetry & Port Scan Simulation | 🟡 In Progress | Live scan execution, connection ingestion verification |
-| **[#22](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/22) P5.2** | Network Threat Detection SPL Engineering | ⚪ Pending | Tuned SPL detection rules for scans and velocity |
-| **[#23](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/23) P5.3** | Reconnaissance & Suspicious Traffic Correlation | ⚪ Pending | Multi-vector correlation and noise suppression logic |
-| **[#24](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/24) P5.4** | Network Incident Investigation & ATT&CK Mapping | ⚪ Pending | Incident triage playbook, ATT&CK matrix validation |
-| **[#25](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/25) P5.5** | Evidence, Dashboard, Technical Report & Validation | ⚪ Pending | SOC Dashboard XML, verified screenshots, PDF report |
+| **[#21](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/21) P5.1** | Network Telemetry & Port Scan Simulation | ✅ Completed | Live scan execution, connection ingestion verification |
+| **[#22](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/22) P5.2** | Network Threat Detection SPL Engineering | ✅ Completed | Tuned SPL detection rules for scans and velocity |
+| **[#23](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/23) P5.3** | Reconnaissance & Suspicious Traffic Correlation | ✅ Completed | Multi-vector correlation and noise suppression logic |
+| **[#24](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/24) P5.4** | Network Incident Investigation & ATT&CK Mapping | ✅ Completed | Incident triage playbook, ATT&CK matrix validation |
+| **[#25](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/25) P5.5** | Evidence, Dashboard, Technical Report & Validation | ✅ Completed | SOC Dashboard XML, verified screenshots, incident report |
 
 ---
 

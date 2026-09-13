@@ -1,7 +1,7 @@
 # ==============================================================================
-# SPL DETECTION TEMPLATE: Abnormal Traffic Patterns & Destination Profiling
+# SPL DETECTION: Abnormal Traffic Patterns & Destination Profiling
 # Project: P5 — Network Threat Detection with Splunk
-# Status: Candidate Template (Pending Live Telemetry Verification in P5.1)
+# Status: Verified Production Query (Sysmon Event ID 3)
 # ==============================================================================
 #
 # PURPOSE:
@@ -9,12 +9,11 @@
 #   and unexpected traffic volume distributions.
 # ==============================================================================
 
-# --- CANDIDATE TEMPLATE: Traffic Profiling ---
-# index=sysmon earliest=-24h
-# | rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
-# | search EventID=3
-# | rex field=_raw "DestinationIp\">(?<dest_ip>[^<]+)</Data>"
-# | rex field=_raw "DestinationPort\">(?<dest_port>\d+)</Data>"
-# | rex field=_raw "Image\">(?<process_path>[^<]+)</Data>"
-# | stats count as total_connections, dc(dest_port) as distinct_ports by dest_ip, process_path
-# | sort - total_connections
+index=sysmon earliest=-24h
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| search EventID=3
+| rex field=_raw "<Data Name=['\"]DestinationIp['\"]>(?<dest_ip>[^<]+)</Data>"
+| rex field=_raw "<Data Name=['\"]DestinationPort['\"]>(?<dest_port>\d+)</Data>"
+| rex field=_raw "<Data Name=['\"]Image['\"]>(?<process_path>[^<]+)</Data>"
+| stats count as total_connections, dc(dest_port) as distinct_ports by dest_ip, process_path
+| sort - total_connections
