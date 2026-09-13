@@ -48,11 +48,11 @@ Because attackers frequently percent-encode malicious payloads to evade perimete
 
 ```spl
 index=web sourcetype=access_combined
-| eval decoded_uri=urldecode(uri)
+| eval clean_uri=coalesce(urldecode(uri), uri)
 | eval attack_type=case(
-    match(decoded_uri, "(?i)(union\s+select|select\s+.*\s+from|'\s*or\s*'1'='1|information_schema|order\s+by\s+\d+|sleep\(\d+\)|benchmark\(|waitfor\s+delay|drop\s+table)"), "SQL Injection (T1190)",
-    match(decoded_uri, "(?i)(<script|%3Cscript|javascript:|onerror\s*=|onload\s*=|alert\(|document\.cookie|eval\(|<img|<svg)"), "Cross-Site Scripting (T1059.007)",
-    match(decoded_uri, "(?i)(\.\./|\.\.\\|\.\.%2f|\.\.%5c|/etc/passwd|/etc/shadow|boot\.ini|win\.ini)"), "Directory Traversal / LFI (T1083)",
+    match(clean_uri, "(?i)(union\s+select|select\s+.*\s+from|'\s*or\s*'1'='1|information_schema|order\s+by\s+\d+|sleep\(\d+\)|benchmark\(|waitfor\s+delay|drop\s+table)"), "SQL Injection (T1190)",
+    match(clean_uri, "(?i)(<script|%3Cscript|javascript:|onerror|onload|alert|document\.cookie|eval\(|<img|<svg)"), "Cross-Site Scripting (T1059.007)",
+    match(clean_uri, "(?i)(\.\./|\.\.\\|\.\.%2f|\.\.%5c|/etc/passwd|/etc/shadow|boot\.ini|win\.ini)"), "Directory Traversal / LFI (T1083)",
     match(useragent, "(?i)(nikto|sqlmap|gobuster|dirbuster|nmap|masscan|wpscan|hydra)"), "Vulnerability Scanner (T1595)",
     status >= 400, "Client Error (HTTP " . status . ")",
     true(), "Benign Request"
@@ -64,9 +64,30 @@ index=web sourcetype=access_combined
 | sort - "Timestamp"
 ```
 
+### Adversary Execution & Raw Web Server Responses
+
+During the simulated engagement, the adversary executed XSS payloads directly against the web application endpoints. Apache 2.4 responded with HTTP 404 status codes as preserved in the terminal session:
+
+```html
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>404 Not Found</title>
+</head><body>
+<h1>Not Found</h1>
+<p>The requested URL was not found on this server.</p>
+<hr>
+<address>Apache/2.4.58 (Ubuntu) Server at 192.168.100.9 Port 80</address>
+</body></html>
+```
+
 ### Forensic Event Stream Sample
 
 ```text
+2026-09-14 02:13:20  192.168.100.6  GET  /user?id=1%3Cscript%3Ealert...             404  curl/8.20.0            Cross-Site Scripting (T1059.007)
+2026-09-14 02:13:20  192.168.100.6  GET  /profile?bio=javascript:alert(1)           404  curl/8.20.0            Cross-Site Scripting (T1059.007)
+2026-09-14 02:13:20  192.168.100.6  GET  /feedback?name=%3Csvg/onload=alert(1)%3E   404  curl/8.20.0            Cross-Site Scripting (T1059.007)
+2026-09-14 02:13:20  192.168.100.6  GET  /comment.php?msg=%3Cimg%20src=x%20...      404  curl/8.20.0            Cross-Site Scripting (T1059.007)
+2026-09-14 02:13:19  192.168.100.6  GET  /search.php?q=%3Cscript%3Ealert(1)...      404  curl/8.20.0            Cross-Site Scripting (T1059.007)
 2026-09-14 02:00:49  192.168.100.6  GET  /                                          200  Nmap Scripting Engine  Vulnerability Scanner (T1595)
 2026-09-14 02:00:48  192.168.100.6  GET  /config                                    404  DirBuster-1.0-RC1      Vulnerability Scanner (T1595)
 2026-09-14 02:00:48  192.168.100.6  GET  /admin                                     404  gobuster/3.1.0         Vulnerability Scanner (T1595)

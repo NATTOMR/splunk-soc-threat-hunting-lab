@@ -24,7 +24,7 @@
           </query>
           <earliest>$time_tok.earliest$</earliest>
           <latest>$time_tok.latest$</latest>
-          <refresh>30s</refresh>
+          <refresh>10s</refresh>
         </search>
         <option name="colorMode">block</option>
         <option name="rangeColors">["0x53a051","0x006d9c"]</option>
@@ -40,13 +40,13 @@
         <search>
           <query>
             index=web sourcetype=access_combined
-            | eval decoded_uri=urldecode(uri)
-            | regex decoded_uri="(?i)(union\s+select|select\s+.*\s+from|'\s*or\s*'1'='1|information_schema|order\s+by\s+\d+|sleep\(\d+\)|benchmark\(|waitfor\s+delay|drop\s+table)"
+            | eval clean_uri=coalesce(urldecode(uri), uri)
+            | regex clean_uri="(?i)(union\s+select|select\s+.*\s+from|'\s*or\s*'1'='1|information_schema|order\s+by\s+\d+|sleep\(\d+\)|benchmark\(|waitfor\s+delay|drop\s+table)"
             | stats count
           </query>
           <earliest>$time_tok.earliest$</earliest>
           <latest>$time_tok.latest$</latest>
-          <refresh>30s</refresh>
+          <refresh>10s</refresh>
         </search>
         <option name="colorMode">block</option>
         <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
@@ -62,13 +62,13 @@
         <search>
           <query>
             index=web sourcetype=access_combined
-            | eval decoded_uri=urldecode(uri)
-            | regex decoded_uri="(?i)(&lt;script|%3Cscript|javascript:|onerror\s*=|onload\s*=|alert\(|document\.cookie|eval\(|&lt;img|&lt;svg)"
+            | eval clean_uri=coalesce(urldecode(uri), uri)
+            | regex clean_uri="(?i)(&lt;script|%3Cscript|javascript:|onerror|onload|alert|document\.cookie|eval\(|&lt;img|&lt;svg)"
             | stats count
           </query>
           <earliest>$time_tok.earliest$</earliest>
           <latest>$time_tok.latest$</latest>
-          <refresh>30s</refresh>
+          <refresh>10s</refresh>
         </search>
         <option name="colorMode">block</option>
         <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
@@ -84,13 +84,13 @@
         <search>
           <query>
             index=web sourcetype=access_combined
-            | eval decoded_uri=urldecode(uri)
-            | regex decoded_uri="(?i)(\.\./|\.\.\\|\.\.%2f|\.\.%5c|/etc/passwd|/etc/shadow|boot\.ini|win\.ini)"
+            | eval clean_uri=coalesce(urldecode(uri), uri)
+            | regex clean_uri="(?i)(\.\./|\.\.\\|\.\.%2f|\.\.%5c|/etc/passwd|/etc/shadow|boot\.ini|win\.ini)"
             | stats count
           </query>
           <earliest>$time_tok.earliest$</earliest>
           <latest>$time_tok.latest$</latest>
-          <refresh>30s</refresh>
+          <refresh>10s</refresh>
         </search>
         <option name="colorMode">block</option>
         <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
@@ -111,7 +111,7 @@
           </query>
           <earliest>$time_tok.earliest$</earliest>
           <latest>$time_tok.latest$</latest>
-          <refresh>30s</refresh>
+          <refresh>10s</refresh>
         </search>
         <option name="colorMode">block</option>
         <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
@@ -134,6 +134,7 @@
           </query>
           <earliest>$time_tok.earliest$</earliest>
           <latest>$time_tok.latest$</latest>
+          <refresh>10s</refresh>
         </search>
         <option name="charting.chart">area</option>
         <option name="charting.chart.stackMode">stacked</option>
@@ -150,6 +151,7 @@
           </query>
           <earliest>$time_tok.earliest$</earliest>
           <latest>$time_tok.latest$</latest>
+          <refresh>10s</refresh>
         </search>
         <option name="charting.chart">pie</option>
       </chart>
@@ -164,11 +166,11 @@
         <search>
           <query>
             index=web sourcetype=access_combined
-            | eval decoded_uri=urldecode(uri)
+            | eval clean_uri=coalesce(urldecode(uri), uri)
             | eval attack_type=case(
-                match(decoded_uri, "(?i)(union\s+select|select\s+.*\s+from|'\s*or\s*'1'='1|information_schema|order\s+by\s+\d+|sleep\(\d+\)|benchmark\(|waitfor\s+delay|drop\s+table)"), "SQL Injection (T1190)",
-                match(decoded_uri, "(?i)(&lt;script|%3Cscript|javascript:|onerror\s*=|onload\s*=|alert\(|document\.cookie|eval\(|&lt;img|&lt;svg)"), "Cross-Site Scripting (T1059.007)",
-                match(decoded_uri, "(?i)(\.\./|\.\.\\|\.\.%2f|\.\.%5c|/etc/passwd|/etc/shadow|boot\.ini|win\.ini)"), "Directory Traversal / LFI (T1083)",
+                match(clean_uri, "(?i)(union\s+select|select\s+.*\s+from|'\s*or\s*'1'='1|information_schema|order\s+by\s+\d+|sleep\(\d+\)|benchmark\(|waitfor\s+delay|drop\s+table)"), "SQL Injection (T1190)",
+                match(clean_uri, "(?i)(&lt;script|%3Cscript|javascript:|onerror|onload|alert|document\.cookie|eval\(|&lt;img|&lt;svg)"), "Cross-Site Scripting (T1059.007)",
+                match(clean_uri, "(?i)(\.\./|\.\.\\|\.\.%2f|\.\.%5c|/etc/passwd|/etc/shadow|boot\.ini|win\.ini)"), "Directory Traversal / LFI (T1083)",
                 match(useragent, "(?i)(nikto|sqlmap|gobuster|dirbuster|nmap|masscan|wpscan|hydra)"), "Vulnerability Scanner (T1595)",
                 status &gt;= 400, "Client Error (HTTP " . status . ")",
                 true(), "Benign Request"
@@ -181,8 +183,9 @@
           </query>
           <earliest>$time_tok.earliest$</earliest>
           <latest>$time_tok.latest$</latest>
+          <refresh>10s</refresh>
         </search>
-        <option name="count">10</option>
+        <option name="count">15</option>
         <option name="dataOverlayMode">none</option>
         <option name="drilldown">none</option>
         <option name="rowNumbers">true</option>

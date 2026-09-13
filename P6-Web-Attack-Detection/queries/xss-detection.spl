@@ -6,13 +6,21 @@
 #
 # PURPOSE:
 #   Identify reflected or stored Cross-Site Scripting payloads targeting
-#   web applications through script tags, event handlers, and DOM manipulation.
+#   application parameters, evaluating both decoded and encoded variants.
 #
-# MITRE ATT&CK: T1059.007 (JavaScript), T1190 (Exploit Public-Facing Application)
+# MITRE ATT&CK:
+#   - T1059.007: Command and Scripting Interpreter: JavaScript
+#   - T1190: Exploit Public-Facing Application
+#
+# LOG SOURCE:
+#   - index=web, sourcetype=access_combined
 # ==============================================================================
 
 index=web sourcetype=access_combined
-| eval decoded_uri=urldecode(uri)
-| regex decoded_uri="(?i)(<script|%3Cscript|javascript:|onerror\s*=|onload\s*=|alert\(|document\.cookie|eval\(|<img\s+src=)"
-| stats count as xss_attempts, values(decoded_uri) as sample_payloads, values(useragent) as user_agents by clientip, method, status
-| sort - xss_attempts
+| eval clean_uri=coalesce(urldecode(uri), uri)
+| regex clean_uri="(?i)(<script|%3Cscript|javascript:|onerror|onload|alert|document\.cookie|eval\(|<img|<svg)"
+| eval attack_type="Cross-Site Scripting (XSS)"
+| eval formatted_time=strftime(_time, "%Y-%m-%d %H:%M:%S")
+| table formatted_time, clientip, method, uri, status, useragent, attack_type
+| rename formatted_time as "Timestamp", clientip as "Attacker IP", method as "Method", uri as "Target URI", status as "HTTP Status", useragent as "User-Agent", attack_type as "Classification"
+| sort - "Timestamp"
