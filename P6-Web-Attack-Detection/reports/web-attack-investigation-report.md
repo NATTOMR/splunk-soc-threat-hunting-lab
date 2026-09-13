@@ -109,11 +109,12 @@ All ingested web security telemetry and correlated alerts were rendered on the *
 ![P6 Web Threat Dashboard](../screenshots/p6-01-web-threat-dashboard.png)
 
 ### Dashboard Metrics at Triage:
-- **Total Ingested Web Requests:** `10`
+- **Total Ingested Web Requests:** `15`
 - **SQL Injection Attempts:** `2` (Flagged High-Severity Red Alert)
+- **Cross-Site Scripting (XSS) Payloads:** `5` (Flagged High-Severity Red Alert)
 - **Path Traversal & LFI Probes:** `3` (Flagged High-Severity Red Alert)
 - **Scanner User-Agents:** `5` (Flagged High-Severity Yellow/Red Alert)
-- **Request Velocity & Error Timeline:** Illustrated sharp surge in HTTP 404 responses during scanner and fuzzing execution.
+- **Request Velocity & Error Timeline:** Illustrated sharp surge in HTTP 404 responses during scanner, XSS, and fuzzing execution.
 - **Top Client Sources:** 100% of malicious traffic mapped directly to adversary host `192.168.100.6`.
 
 ---
