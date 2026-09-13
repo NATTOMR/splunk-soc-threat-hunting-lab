@@ -1,0 +1,20 @@
+# ==============================================================================
+# SPL DETECTION: Web Reconnaissance & 4xx Error Spikes
+# Project: P6 — Web Attack Detection with Splunk
+# Status: Production Detection Rule
+# ==============================================================================
+#
+# PURPOSE:
+#   Detect forced browsing, directory fuzzing, and endpoint brute-force
+#   by calculating anomalous ratios and velocity of 4xx client errors.
+#
+# MITRE ATT&CK: T1083 (File and Directory Discovery)
+# ==============================================================================
+
+index=web sourcetype=access_combined
+| eval is_error=if(status>=400 AND status<500, 1, 0)
+| bin _time span=5m
+| stats count as total_requests, sum(is_error) as error_count by _time, clientip
+| eval error_rate_percent=round((error_count/total_requests)*100, 2)
+| where error_count >= 10
+| sort - error_count

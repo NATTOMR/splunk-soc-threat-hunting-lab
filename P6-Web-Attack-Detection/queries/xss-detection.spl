@@ -1,0 +1,18 @@
+# ==============================================================================
+# SPL DETECTION: Cross-Site Scripting (XSS) Attempt Detection
+# Project: P6 — Web Attack Detection with Splunk
+# Status: Production Detection Rule
+# ==============================================================================
+#
+# PURPOSE:
+#   Identify reflected or stored Cross-Site Scripting payloads targeting
+#   web applications through script tags, event handlers, and DOM manipulation.
+#
+# MITRE ATT&CK: T1059.007 (JavaScript), T1190 (Exploit Public-Facing Application)
+# ==============================================================================
+
+index=web sourcetype=access_combined
+| eval decoded_uri=urldecode(uri)
+| regex decoded_uri="(?i)(<script|%3Cscript|javascript:|onerror\s*=|onload\s*=|alert\(|document\.cookie|eval\(|<img\s+src=)"
+| stats count as xss_attempts, values(decoded_uri) as sample_payloads, values(useragent) as user_agents by clientip, method, status
+| sort - xss_attempts

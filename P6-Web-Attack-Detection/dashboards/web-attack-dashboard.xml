@@ -1,0 +1,192 @@
+<dashboard version="1.1" theme="dark">
+  <label>P6 — Web Attack Detection &amp; Application Security</label>
+  <description>Operational SOC Dashboard: Real-time HTTP telemetry, web attack classification (SQLi, XSS, Path Traversal), scanner detection, and error triage.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="time_tok" searchWhenChanged="true">
+      <label>Time Range</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+
+  <!-- Row 1: Key Metric KPI Cards -->
+  <row>
+    <panel>
+      <single>
+        <title>Total HTTP Requests</title>
+        <search>
+          <query>
+            index=web sourcetype=access_combined
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>30s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Ingested Web Requests</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>SQL Injection Attempts</title>
+        <search>
+          <query>
+            index=web sourcetype=access_combined
+            | eval decoded_uri=urldecode(uri)
+            | regex decoded_uri="(?i)(union\s+select|select\s+.*\s+from|'\s*or\s*'1'='1|information_schema|order\s+by\s+\d+|sleep\(\d+\)|benchmark\(|waitfor\s+delay|drop\s+table)"
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>30s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">SQLi Signatures Detected</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Cross-Site Scripting (XSS)</title>
+        <search>
+          <query>
+            index=web sourcetype=access_combined
+            | eval decoded_uri=urldecode(uri)
+            | regex decoded_uri="(?i)(&lt;script|%3Cscript|javascript:|onerror\s*=|onload\s*=|alert\(|document\.cookie|eval\(|&lt;img|&lt;svg)"
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>30s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">XSS Payloads Flagged</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Path Traversal &amp; LFI</title>
+        <search>
+          <query>
+            index=web sourcetype=access_combined
+            | eval decoded_uri=urldecode(uri)
+            | regex decoded_uri="(?i)(\.\./|\.\.\\|\.\.%2f|\.\.%5c|/etc/passwd|/etc/shadow|boot\.ini|win\.ini)"
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>30s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Traversal Probes</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Scanner User-Agents</title>
+        <search>
+          <query>
+            index=web sourcetype=access_combined
+            | regex useragent="(?i)(nikto|sqlmap|gobuster|dirbuster|nmap|masscan|wpscan|hydra)"
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>30s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[0,5]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Automated Tool Scans</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- Row 2: Analytics & Trends -->
+  <row>
+    <panel>
+      <chart>
+        <title>Request Velocity &amp; HTTP Status Distribution Over Time</title>
+        <search>
+          <query>
+            index=web sourcetype=access_combined
+            | timechart span=5m count by status
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.legend.placement">top</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Top Client Sources</title>
+        <search>
+          <query>
+            index=web sourcetype=access_combined
+            | top limit=10 clientip
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+      </chart>
+    </panel>
+  </row>
+
+  <!-- Row 3: Attack Classification -->
+  <row>
+    <panel>
+      <table>
+        <title>🚨 Classified Web Attack Detections (High Severity Triage)</title>
+        <search>
+          <query>
+            index=web sourcetype=access_combined
+            | eval decoded_uri=urldecode(uri)
+            | eval attack_type=case(
+                match(decoded_uri, "(?i)(union\s+select|select\s+.*\s+from|'\s*or\s*'1'='1|information_schema|order\s+by\s+\d+|sleep\(\d+\)|benchmark\(|waitfor\s+delay|drop\s+table)"), "SQL Injection (T1190)",
+                match(decoded_uri, "(?i)(&lt;script|%3Cscript|javascript:|onerror\s*=|onload\s*=|alert\(|document\.cookie|eval\(|&lt;img|&lt;svg)"), "Cross-Site Scripting (T1059.007)",
+                match(decoded_uri, "(?i)(\.\./|\.\.\\|\.\.%2f|\.\.%5c|/etc/passwd|/etc/shadow|boot\.ini|win\.ini)"), "Directory Traversal / LFI (T1083)",
+                match(useragent, "(?i)(nikto|sqlmap|gobuster|dirbuster|nmap|masscan|wpscan|hydra)"), "Vulnerability Scanner (T1595)",
+                status &gt;= 400, "Client Error (HTTP " . status . ")",
+                true(), "Benign Request"
+              )
+            | search attack_type!="Benign Request"
+            | eval formatted_time=strftime(_time, "%Y-%m-%d %H:%M:%S")
+            | table formatted_time clientip method uri status useragent attack_type
+            | rename formatted_time as "Timestamp", clientip as "Attacker IP", method as "Method", uri as "Target URI", status as "HTTP Status", useragent as "User-Agent", attack_type as "Attack Classification"
+            | sort - "Timestamp"
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

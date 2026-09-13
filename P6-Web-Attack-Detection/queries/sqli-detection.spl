@@ -1,0 +1,18 @@
+# ==============================================================================
+# SPL DETECTION: SQL Injection (SQLi) Attempt Detection
+# Project: P6 — Web Attack Detection with Splunk
+# Status: Production Detection Rule
+# ==============================================================================
+#
+# PURPOSE:
+#   Detect SQL injection attempts within HTTP request URIs and queries
+#   by matching common SQL syntax patterns, stacked queries, and boolean logic.
+#
+# MITRE ATT&CK: T1190 (Exploit Public-Facing Application)
+# ==============================================================================
+
+index=web sourcetype=access_combined
+| eval decoded_uri=urldecode(uri)
+| regex decoded_uri="(?i)(union\s+select|select\s+.*\s+from|'\s*or\s*'1'='1|information_schema|order\s+by\s+\d+|sleep\(\d+\)|benchmark\(|waitfor\s+delay)"
+| stats count as sqli_attempts, values(decoded_uri) as sample_payloads, values(useragent) as user_agents by clientip, method, status
+| sort - sqli_attempts

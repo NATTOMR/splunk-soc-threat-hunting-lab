@@ -1,0 +1,18 @@
+# ==============================================================================
+# SPL DETECTION: Directory / Path Traversal & LFI Detection
+# Project: P6 — Web Attack Detection with Splunk
+# Status: Production Detection Rule
+# ==============================================================================
+#
+# PURPOSE:
+#   Detect path traversal and local file inclusion (LFI) attempts designed
+#   to escape web document roots and access sensitive operating system files.
+#
+# MITRE ATT&CK: T1083 (File and Directory Discovery), T1005 (Data from Local System)
+# ==============================================================================
+
+index=web sourcetype=access_combined
+| eval decoded_uri=urldecode(uri)
+| regex decoded_uri="(?i)(\.\./|\.\.\\|\.\.%2f|\.\.%5c|/etc/passwd|/etc/shadow|boot\.ini|win\.ini|/windows/system32)"
+| stats count as traversal_attempts, values(decoded_uri) as sample_paths, values(useragent) as user_agents by clientip, method, status
+| sort - traversal_attempts

@@ -1,0 +1,17 @@
+# ==============================================================================
+# SPL DETECTION: Vulnerability Scanner & Automated Tool User-Agents
+# Project: P6 — Web Attack Detection with Splunk
+# Status: Production Detection Rule
+# ==============================================================================
+#
+# PURPOSE:
+#   Profile and isolate HTTP requests originating from known automated
+#   penetration testing tools, vulnerability scanners, and web fuzzers.
+#
+# MITRE ATT&CK: T1595 (Active Scanning)
+# ==============================================================================
+
+index=web sourcetype=access_combined
+| regex useragent="(?i)(nikto|sqlmap|gobuster|dirbuster|wpscan|nmap|masscan|burpsuite|acunetix|nessus|zaproxy)"
+| stats count as scan_requests, values(uri_path) as targeted_paths by clientip, useragent
+| sort - scan_requests
