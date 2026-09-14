@@ -1,0 +1,26 @@
+# ==============================================================================
+# SPL Query: 03-suspicious-subjects.spl
+# Project: P7 — Phishing Email Investigation with Splunk
+# Description: Identifies phishing lures using high-urgency keywords, financial
+#              coercion, password expirations, and fake administrative notices.
+# Author: Natto Chakma
+# MITRE ATT&CK: T1566 (Phishing), T1204 (User Execution)
+# ==============================================================================
+
+index=email sourcetype="email:security"
+| regex subject="(?i)(urgent|action required|password expirat|wire transfer|overdue|remittance|invoice|delivery notification|package on hold|shared.*sharepoint|mandatory policy|direct deposit|nda signature)"
+| eval lure_category=case(
+    match(subject, "(?i)(wire transfer|remittance|invoice|overdue|direct deposit)"), "Financial / Wire Fraud / BEC",
+    match(subject, "(?i)(password expirat|action required|mandatory policy|account suspended)"), "Credential Harvesting / Administrative Lure",
+    match(subject, "(?i)(delivery|package|hold|shipping)"), "Delivery / Logistics Tracking Lure",
+    match(subject, "(?i)(sharepoint|onedrive|docusign|nda signature)"), "Cloud Document / Signature Lure",
+    true(), "General Phishing Lure"
+  )
+| stats count as detection_count,
+        values(sender) as senders,
+        values(recipient) as recipients,
+        values(attachment_name) as attachments,
+        values(url) as urls,
+        max(risk_score) as max_risk
+        by lure_category, subject
+| sort - max_risk, - detection_count

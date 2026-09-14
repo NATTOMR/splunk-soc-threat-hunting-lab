@@ -1,0 +1,31 @@
+# ==============================================================================
+# SPL Query: 07-endpoint-correlation.spl
+# Project: P7 — Phishing Email Investigation with Splunk
+# Description: Cross-index correlation between email telemetry (`index=email`)
+#              and endpoint activity (`index=sysmon`) to detect post-phishing
+#              execution: browser launching, malicious domain DNS queries (EID 22),
+#              and suspicious child process creation from Outlook/Word/Excel (EID 1).
+# Author: Natto Chakma
+# MITRE ATT&CK: T1204 (User Execution), T1059 (Command & Scripting Interpreter)
+# ==============================================================================
+
+# Search 1: Cross-telemetry correlation for user interaction with phishing domains
+(index=email sourcetype="email:security" url!="none") OR
+(index=sysmon EventCode=22)
+| eval correlated_indicator=coalesce(url, QueryName)
+| eval activity_source=if(index=="email", "Email Gateway", "Endpoint Sysmon DNS")
+| stats count, values(activity_source) as observed_layers, values(recipient) as target_user, values(Image) as executing_process by correlated_indicator
+| where count > 1 OR match(correlated_indicator, "(?i)(micros0ft|hr-internal-portal|docusign-docs|onedrive)")
+| table correlated_indicator, observed_layers, target_user, executing_process, count
+| rename correlated_indicator as "Investigated Domain / Indicator",
+         observed_layers as "Observed Telemetry Layers",
+         target_user as "Targeted Corporate User",
+         executing_process as "Executing Endpoint Process",
+         count as "Event Count"
+
+# Search 2: Process execution spawned from email clients or Office applications
+# (Sysmon EventCode 1)
+# index=sysmon EventCode=1 (ParentImage="*\\OUTLOOK.EXE" OR ParentImage="*\\WINWORD.EXE" OR ParentImage="*\\EXCEL.EXE")
+# | eval is_suspicious_child=if(match(Image, "(?i)(powershell|cmd|cscript|wscript|mshta|certutil|rundll32)\.exe$"), "ALERT: Weaponized Document Child Process", "Standard")
+# | search is_suspicious_child!="Standard"
+# | table _time, host, ParentImage, Image, CommandLine, User

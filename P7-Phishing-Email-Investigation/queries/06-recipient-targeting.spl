@@ -1,0 +1,27 @@
+# ==============================================================================
+# SPL Query: 06-recipient-targeting.spl
+# Project: P7 — Phishing Email Investigation with Splunk
+# Description: Detects VIP executive targeting (Whaling) and mass-blast phishing
+#              campaigns targeting multiple corporate employees simultaneously.
+# Author: Natto Chakma
+# MITRE ATT&CK: T1566 (Phishing), T1566.002 (Spearphishing Link)
+# ==============================================================================
+
+index=email sourcetype="email:security"
+| eval is_vip=if(match(recipient, "(?i)(cfo|ceo|cio|ciso|director|vp|exec|legal)@"), 1, 0)
+| eventstats count as blast_volume, dc(recipient) as unique_targets by sender, subject
+| eval campaign_type=case(
+    is_vip=1, "Spearphishing / Whaling (Executive Target)",
+    unique_targets >= 3, "Mass-Blast Phishing Campaign",
+    unique_targets = 2, "Multi-Recipient Targeted Lure",
+    true(), "Single-Target Phishing"
+  )
+| search is_vip=1 OR unique_targets >= 2
+| stats count as total_emails,
+        values(recipient) as targeted_users,
+        values(src_ip) as sender_ips,
+        values(attachment_name) as attachments,
+        values(url) as urls,
+        values(action) as actions
+        by campaign_type, sender, subject
+| sort - total_emails

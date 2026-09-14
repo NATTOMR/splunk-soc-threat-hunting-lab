@@ -1,0 +1,27 @@
+# ==============================================================================
+# SPL Query: 01-suspicious-senders.spl
+# Project: P7 — Phishing Email Investigation with Splunk
+# Description: Detects lookalike/homoglyph sender domains, public webmail
+#              impersonating internal leadership (Whaling), and anomalous TLDs.
+# Author: Natto Chakma
+# MITRE ATT&CK: T1566 (Phishing), T1036 (Masquerading)
+# ==============================================================================
+
+index=email sourcetype="email:security"
+| eval clean_sender=lower(sender), clean_domain=lower(sender_domain)
+| eval sender_anomaly=case(
+    match(clean_domain, "(?i)(micros0ft|paypa1|docus1gn|onedr1ve|amaz0n|g00gle)"), "Typosquatting / Homoglyph Domain",
+    match(clean_domain, "(?i)\.(info|online|cc|top|xyz|buzz|work|icu|kim)$"), "Suspicious / Low-Reputation TLD",
+    match(clean_sender, "(?i)(ceo|cfo|executive|director|president).*@.*(gmail|yahoo|hotmail|outlook)\.com"), "Public Webmail Executive Impersonation",
+    sender_domain!=recipient_domain AND match(clean_sender, "(?i)(admin|support|security|payroll|hr).*"), "External Identity Masquerading as Internal Role",
+    true(), "Standard"
+  )
+| search sender_anomaly!="Standard"
+| stats count as incident_count,
+        values(sender) as sender_addresses,
+        values(recipient) as targeted_recipients,
+        values(subject) as email_subjects,
+        values(src_ip) as sending_ips,
+        values(action) as enforcement_actions
+        by sender_anomaly, sender_domain
+| sort - incident_count

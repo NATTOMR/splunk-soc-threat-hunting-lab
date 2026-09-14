@@ -1,0 +1,258 @@
+<dashboard version="1.1" theme="dark">
+  <label>P7 — Phishing Email Investigation &amp; Security Operations</label>
+  <description>Operational SOC Dashboard: Email security gateway telemetry, suspicious sender analysis, malicious attachment and URL triage, authentication failures, and incident correlation.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="time_tok" searchWhenChanged="true">
+      <label>Time Range</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+
+  <!-- Row 1: Key Metric KPI Cards -->
+  <row>
+    <panel>
+      <single>
+        <title>Total Emails Ingested</title>
+        <search>
+          <query>
+            index=email sourcetype="email:security"
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>10s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Gateway Message Stream</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Phishing Threats Flagged</title>
+        <search>
+          <query>
+            index=email sourcetype="email:security" risk_score>=75
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>10s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">High-Risk Suspicious Messages</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Malicious Attachments</title>
+        <search>
+          <query>
+            index=email sourcetype="email:security" attachment_name!="none"
+            | eval is_dangerous=if(match(attachment_name, "(?i)\.(exe|vbs|xlsm|docm|iso|pdf\.exe)$"), 1, 0)
+            | where is_dangerous=1
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>10s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Weaponized Files Detected</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Malicious / Phishing URLs</title>
+        <search>
+          <query>
+            index=email sourcetype="email:security" url!="none"
+            | eval is_bad_url=if(match(url, "^http://\d{1,3}\.\d{1,3}|(?i)(login|signin|auth|verify|portal|bit\.ly)"), 1, 0)
+            | where is_bad_url=1
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>10s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[0,3]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Credential Harvesters &amp; IP Links</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>SPF / DKIM / DMARC Failures</title>
+        <search>
+          <query>
+            index=email sourcetype="email:security" (spf="fail" OR dkim="fail" OR dmarc="fail")
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>10s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Authentication Spoofing</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- Row 2: Threat Categorization & Timeline Analysis -->
+  <row>
+    <panel>
+      <chart>
+        <title>Phishing Attack Vector &amp; Lure Category Distribution</title>
+        <search>
+          <query>
+            index=email sourcetype="email:security" risk_score>=75
+            | eval category=case(
+                attachment_name!="none" AND match(attachment_name, "(?i)\.(exe|vbs|xlsm|iso|pdf\.exe)"), "Weaponized Attachment",
+                match(url, "^http://\d{1,3}\.\d{1,3}|(?i)(login|signin|auth|verify)"), "Credential Harvester / Link",
+                match(sender, "(?i)(ceo|cfo|executive)"), "Executive Impersonation / Whaling",
+                spf="fail" AND dmarc="fail", "Domain Spoofing / Auth Failure",
+                true(), "General Phishing Lure"
+              )
+            | stats count by category
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.legend.placement">right</option>
+      </chart>
+    </panel>
+
+    <panel>
+      <chart>
+        <title>Email Security Enforcement Actions (Delivered vs Quarantined vs Blocked)</title>
+        <search>
+          <query>
+            index=email sourcetype="email:security"
+            | stats count by action
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.legend.placement">none</option>
+      </chart>
+    </panel>
+
+    <panel>
+      <chart>
+        <title>Authentication Verdict Breakdown (SPF / DKIM / DMARC)</title>
+        <search>
+          <query>
+            index=email sourcetype="email:security"
+            | eval auth_status=case(
+                spf="pass" AND dkim="pass" AND dmarc="pass", "Full Alignment (Pass)",
+                spf="fail" AND dmarc="fail", "Critical Spoof (SPF+DMARC Fail)",
+                spf="fail" OR dkim="fail", "Partial Failure",
+                true(), "Unauthenticated"
+              )
+            | stats count by auth_status
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.legend.placement">none</option>
+      </chart>
+    </panel>
+  </row>
+
+  <!-- Row 3: Real-Time Phishing Threat Triage Queue -->
+  <row>
+    <panel>
+      <table>
+        <title>Phishing Incident Triage Queue (Risk Score &gt;= 75)</title>
+        <search>
+          <query>
+            index=email sourcetype="email:security" risk_score>=75
+            | eval Threat_Type=case(
+                match(attachment_name, "\.(exe|vbs|xlsm|iso|pdf\.exe)$"), "Weaponized Attachment (T1566.001)",
+                match(url, "^http://\d{1,3}\.\d{1,3}|(?i)(login|signin|auth|verify)"), "Credential Harvester (T1566.002)",
+                match(sender, "(?i)(ceo|cfo|executive)"), "Executive Impersonation / Whaling",
+                spf="fail" AND dmarc="fail", "Domain Spoofing / Auth Failure",
+                true(), "Suspicious Message"
+              )
+            | table timestamp, sender, recipient, subject, Threat_Type, action, risk_score
+            | rename timestamp as "Timestamp", sender as "Sender Address", recipient as "Target Recipient",
+                     subject as "Email Subject", Threat_Type as "Threat Classification",
+                     action as "Enforcement", risk_score as "Risk Score"
+            | sort - "Risk Score"
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+  <!-- Row 4: Forensic Detail Panels -->
+  <row>
+    <panel>
+      <table>
+        <title>Weaponized Attachments &amp; File Hashes</title>
+        <search>
+          <query>
+            index=email sourcetype="email:security" attachment_name!="none"
+            | eval is_threat=if(match(attachment_name, "(?i)\.(exe|vbs|xlsm|iso|pdf\.exe)"), 1, 0)
+            | where is_threat=1
+            | table timestamp, attachment_name, attachment_size_kb, attachment_hash, sender, recipient, action
+            | rename timestamp as "Timestamp", attachment_name as "File Name", attachment_size_kb as "Size (KB)",
+                     attachment_hash as "SHA-256 Hash", sender as "Sender", recipient as "Recipient", action as "Action"
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">5</option>
+      </table>
+    </panel>
+
+    <panel>
+      <table>
+        <title>Malicious URLs &amp; Phishing Landing Pages</title>
+        <search>
+          <query>
+            index=email sourcetype="email:security" url!="none"
+            | eval is_threat=if(match(url, "^http://\d{1,3}\.\d{1,3}|(?i)(login|signin|auth|verify|bit\.ly)"), 1, 0)
+            | where is_threat=1
+            | table timestamp, url, sender, recipient, action, risk_score
+            | rename timestamp as "Timestamp", url as "Extracted URL", sender as "Sender",
+                     recipient as "Target Recipient", action as "Action", risk_score as "Risk Score"
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">5</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

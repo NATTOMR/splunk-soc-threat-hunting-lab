@@ -1,0 +1,23 @@
+# ==============================================================================
+# SPL Query: 02-authentication-failures.spl
+# Project: P7 — Phishing Email Investigation with Splunk
+# Description: Flags email events with SPF, DKIM, and DMARC alignment failures.
+# Author: Natto Chakma
+# MITRE ATT&CK: T1566.002 (Spearphishing Link), T1586 (Compromised Accounts)
+# ==============================================================================
+
+index=email sourcetype="email:security"
+| eval auth_status=case(
+    spf="fail" AND dkim="fail" AND dmarc="fail", "Critical: Complete Auth Alignment Failure (Spoofing)",
+    spf="fail" AND (dkim="none" OR dkim="fail"), "High: SPF Hard Failure & Missing/Invalid DKIM",
+    dmarc="fail", "Medium: DMARC Policy Rejection",
+    spf="softfail", "Low: SPF Softfail (Questionable Relaying)",
+    true(), "Legitimate / Passed"
+  )
+| search auth_status!="Legitimate / Passed"
+| eval timestamp=strftime(_time, "%Y-%m-%d %H:%M:%S")
+| table timestamp, src_ip, sender, recipient, subject, spf, dkim, dmarc, auth_status, action, risk_score
+| rename timestamp as "Timestamp", src_ip as "Sending IP", sender as "Sender", recipient as "Recipient",
+         subject as "Subject", spf as "SPF", dkim as "DKIM", dmarc as "DMARC",
+         auth_status as "Authentication Anomaly", action as "Action", risk_score as "Risk Score"
+| sort - "Risk Score"

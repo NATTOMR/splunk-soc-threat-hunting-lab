@@ -1,0 +1,27 @@
+# ==============================================================================
+# SPL Query: 04-malicious-attachments.spl
+# Project: P7 — Phishing Email Investigation with Splunk
+# Description: Detects weaponized attachments, dangerous file extensions,
+#              macro-enabled documents, archive/disk containers, and dual extensions.
+# Author: Natto Chakma
+# MITRE ATT&CK: T1566.001 (Spearphishing Attachment), T1204.002 (Malicious File)
+# ==============================================================================
+
+index=email sourcetype="email:security" attachment_name!="none"
+| eval clean_attachment=lower(attachment_name)
+| eval threat_type=case(
+    match(clean_attachment, "\.(pdf|doc|docx|xls|xlsx|txt)\.(exe|vbs|bat|cmd|scr|ps1|hta)$"), "Critical: Dual-Extension Executable Masking",
+    match(clean_attachment, "\.(exe|scr|bat|cmd|dll|hta|cpl)$"), "High: Direct Executable Binary",
+    match(clean_attachment, "\.(vbs|js|jse|wsf|ps1)$"), "High: Standalone Script Dropper",
+    match(clean_attachment, "\.(docm|xlsm|pptm|dotm)$"), "High: Macro-Enabled Office Document",
+    match(clean_attachment, "\.(iso|img|vhd|vhdx)$"), "High: Disk Image Container (Mark-of-the-Web Bypass)",
+    match(clean_attachment, "\.(zip|7z|rar|tar|gz)$"), "Medium: Archive Attachment (Potential Stager)",
+    true(), "Standard File Attachment"
+  )
+| search threat_type!="Standard File Attachment"
+| table timestamp, sender, recipient, subject, attachment_name, threat_type, attachment_hash, attachment_size_kb, action, risk_score
+| rename timestamp as "Timestamp", sender as "Sender", recipient as "Recipient",
+         subject as "Subject", attachment_name as "Attachment Name", threat_type as "Threat Classification",
+         attachment_hash as "SHA-256 Hash", attachment_size_kb as "Size (KB)",
+         action as "Action", risk_score as "Risk Score"
+| sort - "Risk Score"
