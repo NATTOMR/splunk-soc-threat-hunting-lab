@@ -10,15 +10,17 @@
         <latest>now</latest>
       </default>
     </input>
-    <input type="dropdown" token="agent_tok" searchWhenChanged="true">
+    <input type="dropdown" token="agent_filter" searchWhenChanged="true">
       <label>Wazuh Agent</label>
-      <choice value="*">All Agents</choice>
-      <default>*</default>
+      <choice value="">All Agents</choice>
+      <default></default>
+      <prefix>agent.name="</prefix>
+      <suffix>"</suffix>
       <fieldForLabel>agent_label</fieldForLabel>
       <fieldForValue>agent_val</fieldForValue>
       <search>
-        <query>index=wazuh earliest=-7d | eval agent_val=coalesce('agent.name', host), agent_label=coalesce('agent.name', host) + " (" + coalesce('agent.id', "000") + ")" | stats count by agent_val agent_label | table agent_label agent_val</query>
-        <earliest>-7d@d</earliest>
+        <query>index=wazuh earliest=-30d | eval agent_val=coalesce('agent.name', host), agent_label=coalesce('agent.name', host) + " (" + coalesce('agent.id', "000") + ")" | stats count by agent_val agent_label | table agent_label agent_val</query>
+        <earliest>-30d@d</earliest>
         <latest>now</latest>
       </search>
     </input>
@@ -30,7 +32,7 @@
       <title>Total Wazuh Alerts Ingested</title>
       <single>
         <search>
-          <query>index=wazuh agent.name="$agent_tok$" | stats count</query>
+          <query>index=wazuh $agent_filter$ | stats count</query>
           <earliest>$time_tok.earliest$</earliest>
           <latest>$time_tok.latest$</latest>
         </search>
@@ -50,7 +52,7 @@
       <title>High &amp; Critical Alerts (Level &gt;= 10)</title>
       <single>
         <search>
-          <query>index=wazuh agent.name="$agent_tok$" 'rule.level'&gt;=10 | stats count</query>
+          <query>index=wazuh $agent_filter$ 'rule.level'&gt;=10 | stats count</query>
           <earliest>$time_tok.earliest$</earliest>
           <latest>$time_tok.latest$</latest>
         </search>
@@ -70,7 +72,7 @@
       <title>Distinct Detection Rules Fired</title>
       <single>
         <search>
-          <query>index=wazuh agent.name="$agent_tok$" | stats dc(rule.id)</query>
+          <query>index=wazuh $agent_filter$ | stats dc(rule.id)</query>
           <earliest>$time_tok.earliest$</earliest>
           <latest>$time_tok.latest$</latest>
         </search>
@@ -112,7 +114,7 @@
       <title>Alerts by Severity Tier (Panel 2)</title>
       <chart>
         <search>
-          <query>index=wazuh agent.name="$agent_tok$" 
+          <query>index=wazuh $agent_filter$ 
 | eval severity_tier = case(
     'rule.level' &gt;= 12, "Critical (L12-15)",
     'rule.level' &gt;= 8 AND 'rule.level' &lt; 12, "High (L8-11)",
@@ -133,7 +135,7 @@
       <title>Alert Velocity Over Time by Severity Tier (Panel 3)</title>
       <chart>
         <search>
-          <query>index=wazuh agent.name="$agent_tok$"
+          <query>index=wazuh $agent_filter$
 | eval severity_tier = case(
     'rule.level' &gt;= 12, "Critical",
     'rule.level' &gt;= 8 AND 'rule.level' &lt; 12, "High",
@@ -159,7 +161,7 @@
       <title>Top Firing Wazuh Detection Rules (Panel 4)</title>
       <chart>
         <search>
-          <query>index=wazuh agent.name="$agent_tok$"
+          <query>index=wazuh $agent_filter$
 | eval rule_label = 'rule.id' + " - " + substr('rule.description', 1, 40)
 | top limit=10 rule_label</query>
           <earliest>$time_tok.earliest$</earliest>
@@ -205,7 +207,7 @@
       <title>Authentication Activity &amp; Logon Failures (Panel 6)</title>
       <chart>
         <search>
-          <query>index=wazuh agent.name="$agent_tok$" ('rule.groups{}'="authentication*" OR 'rule.id'="60106" OR 'rule.id'="60122" OR 'rule.id'="5710" OR 'rule.id'="5715")
+          <query>index=wazuh $agent_filter$ ('rule.groups{}'="authentication*" OR 'rule.id'="60106" OR 'rule.id'="60122" OR 'rule.id'="5710" OR 'rule.id'="5715")
 | eval auth_result = case(
     'rule.groups{}'="authentication_failed" OR 'rule.id'="60122" OR 'rule.id'="5710", "FAILED_AUTH",
     'rule.groups{}'="authentication_success" OR 'rule.id'="60106" OR 'rule.id'="5715", "SUCCESSFUL_AUTH",
@@ -226,7 +228,7 @@
       <title>Observed MITRE ATT&amp;CK Techniques (Panel 8)</title>
       <table>
         <search>
-          <query>index=wazuh agent.name="$agent_tok$" isnotnull('rule.mitre.id{}')
+          <query>index=wazuh $agent_filter$ isnotnull('rule.mitre.id{}')
 | mvexpand 'rule.mitre.id{}'
 | eval mitre_tech = 'rule.mitre.id{}'
 | eval mitre_tactic = coalesce('rule.mitre.tactic{}', "Unassigned")
@@ -252,7 +254,7 @@
       <title>High-Severity Alert Triage Queue - Level &gt;= 10 (Panel 7)</title>
       <table>
         <search>
-          <query>index=wazuh agent.name="$agent_tok$" 'rule.level'&gt;=10
+          <query>index=wazuh $agent_filter$ 'rule.level'&gt;=10
 | eval severity = case('rule.level'&gt;=14, "CRITICAL", 'rule.level'&gt;=12, "VERY HIGH", true(), "HIGH")
 | eval src = coalesce('data.win.eventdata.ipAddress', 'data.srcip', src_ip, "N/A")
 | eval target_user = coalesce('data.win.eventdata.targetUserName', 'data.srcuser', 'data.dstuser', user, "N/A")
@@ -278,7 +280,7 @@
       <title>Recent Wazuh Ingested Alerts Stream (Panel 9)</title>
       <table>
         <search>
-          <query>index=wazuh agent.name="$agent_tok$"
+          <query>index=wazuh $agent_filter$
 | eval src = coalesce('data.win.eventdata.ipAddress', 'data.srcip', src_ip, "N/A")
 | eval user = coalesce('data.win.eventdata.targetUserName', 'data.srcuser', user, "N/A")
 | sort - _time
@@ -296,7 +298,7 @@
       <title>Investigation Timeline - Cross-Index Incident Correlation (Panel 10)</title>
       <table>
         <search>
-          <query>(index=wazuh agent.name="$agent_tok$") OR (index=windows EventCode=4625) OR (index=sysmon EventID=3)
+          <query>(index=wazuh $agent_filter$) OR (index=windows EventCode=4625) OR (index=sysmon EventID=3)
 | eval telemetry_source = case(
     index="wazuh", "Wazuh Alert (" + 'rule.id' + ")",
     index="windows", "Windows Security EID " + EventCode,
