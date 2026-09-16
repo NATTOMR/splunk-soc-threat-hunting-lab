@@ -1,4 +1,4 @@
-Phishing Email Investigation with Splunk
+# 📧 P7 — Phishing Email Investigation with Splunk
 
 [![Status](https://img.shields.io/badge/Status-Completed%20%26%20Validated-success.svg)](#14-project-status)
 [![SIEM](https://img.shields.io/badge/SIEM-Splunk%20Enterprise%2010.4.3-blue.svg)](https://www.splunk.com/)
@@ -7,6 +7,8 @@ Phishing Email Investigation with Splunk
 [![Framework](https://img.shields.io/badge/Framework-MITRE%20ATT%26CK-red.svg)](https://attack.mitre.org/)
 [![GitHub Issue](https://img.shields.io/badge/GitHub%20Issue-%238-brightgreen.svg)](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/8)
 [![Report](https://img.shields.io/badge/Report-PDF%20Compiled-red.svg)](reports/P7-Phishing-Email-Investigation-Report.pdf)
+
+![Phishing Email Investigation Architecture & Workflow](screenshots/p7-workflow-architecture.png)
 
 > **Author:** Natto Chakma  
 > **Master Repository Component:** This project constitutes **Project P7** in the [Splunk SOC & Threat Hunting Lab](../README.md).  
