@@ -342,7 +342,7 @@ The hunt strictly adhered to the 8-stage hunting pipeline aligned with TaHiTI an
       <td><code>T1059.001</code>, <code>T1027</code></td>
       <td><code>index=sysmon</code> (EventID 1)</td>
       <td><span class="badge badge-danger">Threat Identified</span></td>
-      <td>PowerShell launched with <code>-ep bypass -w hidden -enc SQBFAFgA...</code> (Threat score calculated at 70/100).</td>
+      <td>PowerShell launched with <code>-ep bypass -w hidden -nop -enc VwByAGk...</code> (Empirical Threat Score 70/100 confirmed).</td>
     </tr>
     <tr>
       <td><strong>H4</strong></td>
@@ -350,7 +350,7 @@ The hunt strictly adhered to the 8-stage hunting pipeline aligned with TaHiTI an
       <td><code>T1547.001</code>, <code>T1053.005</code></td>
       <td><code>index=sysmon</code> (1, 12, 13), <code>index=windows</code> (7045)</td>
       <td><span class="badge badge-danger">Threat Identified</span></td>
-      <td>Registry key write under <code>HKCU:\...\CurrentVersion\Run</code> and <code>schtasks /create</code> task generation.</td>
+      <td>Registry write under <code>HKCU:\...\Run\P8_ThreatHunt_Persistence</code> (EID 13) and <code>schtasks /create /tn P8_ThreatHunt_Task</code> (EID 1).</td>
     </tr>
     <tr>
       <td><strong>H5</strong></td>
@@ -382,7 +382,7 @@ The hunt strictly adhered to the 8-stage hunting pipeline aligned with TaHiTI an
       <td><code>T1071.004</code>, <code>T1572</code></td>
       <td><code>index=sysmon</code> (EventID 22)</td>
       <td><span class="badge badge-danger">Threat Identified</span></td>
-      <td>DNS query telemetry captured outbound resolution attempts to <code>*.duckdns.org</code> namespaces.</td>
+      <td>Sysmon EventID 22 captured outbound resolution for <code>beacon-p8-test.duckdns.org</code> originating from <code>powershell.exe</code>.</td>
     </tr>
   </tbody>
 </table>

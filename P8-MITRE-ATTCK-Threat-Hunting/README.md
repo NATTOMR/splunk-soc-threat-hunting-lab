@@ -8,6 +8,8 @@
 [![GitHub Issue](https://img.shields.io/badge/GitHub%20Issue-%239-brightgreen.svg)](https://github.com/NATTOMR/splunk-soc-threat-hunting-lab/issues/9)
 [![Report](https://img.shields.io/badge/Report-PDF%20Compiled-red.svg)](reports/P8-MITRE-ATTCK-Threat-Hunting-Report.pdf)
 
+![P8 Threat Hunting Architecture & Workflow](screenshots/p8-workflow-architecture.png)
+
 > **Author:** Natto Chakma  
 > **Master Repository Component:** This project constitutes **Project P8** in the [Splunk SOC & Threat Hunting Lab](../README.md).  
 > **Project Identity:** P8 — MITRE ATT&CK Threat Hunting with Splunk  
@@ -237,10 +239,41 @@ Step-by-step triage playbooks are maintained in [`docs/investigation-playbooks.m
 
 ## 11. Evidence & Forensic Findings
 
-- **Obfuscated PowerShell:** Uncovered execution with `-EncodedCommand` payload string decoded as Base64 UTF-16LE memory dropper.
-- **LOLBin Execution:** Captured `certutil.exe` attempting download of remote assets to volatile `%TEMP%` path.
-- **Persistence Hooks:** Traced registry value write under `HKCU:\Software\Microsoft\Windows\CurrentVersion\Run` and scheduled task generation.
-- **C2 Ingress/Egress:** DNS query logs revealed outbound queries targeting dynamic DNS domains (`*.duckdns.org`).
+The threat hunting hypotheses were empirically verified against live kernel telemetry streamed from Windows Server 2022 into Splunk Enterprise:
+
+### Exhibit A — Obfuscated PowerShell Hunt (T1059.001 / T1027)
+- **Hunting Query:** [`queries/03-hypothesis-powershell-hunting.spl`](queries/03-hypothesis-powershell-hunting.spl)
+- **Calculated Threat Score:** **`70`** (`has_enc: 30`, `has_bypass: 20`, `has_hidden: 20`)
+- **Captured Command Line:**
+  ```text
+  "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -ep bypass -w hidden -nop -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAFAAOAA...
+  ```
+- **Triage Result:** Flagged as a high-confidence, critical-tier stealth execution attempting in-memory script staging.
+
+![Figure 2 — Obfuscated PowerShell Threat Hunting (Score 70)](screenshots/p8-01-powershell-hunt-score-70.png)
+
+### Exhibit B — Dynamic DNS C2 Beaconing Hunt (T1071.004)
+- **Hunting Query:** [`queries/08-hypothesis-ioc-investigation.spl`](queries/08-hypothesis-ioc-investigation.spl)
+- **Sysmon Event Channel:** `index=sysmon EventID=22` (DNS Query)
+- **Queried Domain:** `beacon-p8-test.duckdns.org`
+- **Requesting Process:** `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`
+- **User Context:** `WIN-SERVER\Administrator`
+- **Triage Result:** Surfaced outbound resolution requests destined for public dynamic DNS tunneling services.
+
+![Figure 3 — Dynamic DNS C2 Beaconing Hunt](screenshots/p8-02-dynamic-dns-c2-beacon.png)
+
+### Exhibit C — Scheduled Task & Registry Autostart Persistence (T1053.005 / T1547.001)
+- **Hunting Query:** [`queries/04-hypothesis-persistence-hunting.spl`](queries/04-hypothesis-persistence-hunting.spl)
+- **Scheduled Task Artifact:** `EventID=1` capturing `schtasks.exe /create /tn P8_ThreatHunt_Task /tr "cmd.exe /c echo threat_hunt" /sc daily /st 12:00 /f`
+- **Registry Run Key Artifact:** `EventID=13` capturing autostart modification at `HKU\...\Software\Microsoft\Windows\CurrentVersion\Run\P8_ThreatHunt_Persistence`
+- **Triage Result:** Successfully identified multiple concurrent persistence hooks designed to survive host restarts.
+
+![Figure 4 — Scheduled Task and Registry Run Key Persistence](screenshots/p8-03-persistence-registry-and-tasks.png)
+
+### Exhibit D — Living-off-the-Land (LOLBin) Ingress (T1105 / T1218)
+- **Hunting Query:** [`queries/02-hypothesis-process-hunting.spl`](queries/02-hypothesis-process-hunting.spl)
+- **Invocations:** `bitsadmin.exe /create myDownloadJob` and `certutil.exe -urlcache -split`
+- **Triage Result:** Telemetry captured administrative utilities leveraged outside normal baselines for ingress file staging.
 
 ---
 
