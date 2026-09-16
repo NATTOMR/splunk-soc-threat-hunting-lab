@@ -489,12 +489,22 @@ splunk-soc-threat-hunting-lab/
 │       └── p2-19-splunk-receiver-*.png         # Receiver port and firewall
 │
 ├── P3-Linux-Security-Monitoring/
-│   │
 │   └── README.md                               # P3 project detail and status
 │
-└── P4-Brute-Force-Detection/
-    │
-    └── README.md                               # P4 project detail and status
+├── P4-Brute-Force-Detection/
+│   └── README.md                               # P4 project detail and status
+│
+├── P5-Network-Threat-Detection/
+│   └── README.md                               # P5 project detail and status
+│
+├── P6-Web-Attack-Detection/
+│   └── README.md                               # P6 project detail and status
+│
+├── P7-Phishing-Email-Investigation/
+│   └── README.md                               # P7 project detail and status
+│
+└── P8-MITRE-ATTCK-Threat-Hunting/
+    └── README.md                               # P8 project detail and status
 ```
 
 ---
@@ -530,7 +540,7 @@ splunk-soc-threat-hunting-lab/
 | **Network threat detection** | Sysmon EID 3 connection monitoring, velocity spikes, and port scan detection — [Project P5](P5-Network-Threat-Detection/README.md) (**Complete**) |
 | **Web attack detection** | Apache access log analysis, SQLi, XSS, Path Traversal, and Scanner detection — [Project P6](P6-Web-Attack-Detection/README.md) (**Complete**) |
 | **Phishing email investigation** | Email gateway telemetry, weaponized attachment triage, and whaling detection — [Project P7](P7-Phishing-Email-Investigation/README.md) (**Complete**) |
-| **MITRE ATT&CK threat hunting** | Hypothesis-driven hunting across ATT&CK tactics — Project P8 |
+| **MITRE ATT&CK threat hunting** | Hypothesis-driven hunting across ATT&CK tactics — [Project P8](P8-MITRE-ATTCK-Threat-Hunting/README.md) (**Complete**) |
 | **Automated adversary emulation** | Atomic Red Team execution for detection validation |
 | **Sigma rule conversion** | Translate community Sigma rules to Splunk SPL |
 | **Threat intelligence enrichment** | VirusTotal / AbuseIPDB integration via Splunk lookups |
@@ -549,7 +559,7 @@ splunk-soc-threat-hunting-lab/
 | **P5** | [**Network Threat Detection with Splunk**](P5-Network-Threat-Detection/README.md) | ✅ Complete |
 | **P6** | [**Web Attack Detection with Splunk**](P6-Web-Attack-Detection/README.md) | ✅ Complete |
 | **P7** | [**Phishing Email Investigation with Splunk**](P7-Phishing-Email-Investigation/README.md) | ✅ Complete |
-| **P8** | MITRE ATT&CK Threat Hunting | ⚪ Planned |
+| **P8** | [**MITRE ATT&CK Threat Hunting with Splunk**](P8-MITRE-ATTCK-Threat-Hunting/README.md) | ✅ Complete |
 | **P9** | Splunk SOC Dashboard | ⚪ Planned |
 | **P10** | Wazuh + Splunk SIEM Integration | ⚪ Planned |
 

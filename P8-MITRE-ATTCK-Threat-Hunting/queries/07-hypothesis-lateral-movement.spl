@@ -1,0 +1,50 @@
+# ==============================================================================
+# SPL Query: 07-hypothesis-lateral-movement.spl
+# Project: P8 — MITRE ATT&CK Threat Hunting with Splunk
+# Hypothesis: Adversaries pivot laterally across internal network boundaries by 
+#             abusing administrative shares (ADMIN$, C$, IPC$), instantiating 
+#             remote execution services (PsExec / PSEXESVC), establishing high-risk 
+#             RDP sessions, or issuing WinRM commands from compromised pivot hosts.
+# Author: Natto Chakma
+# MITRE ATT&CK: 
+#   - T1021.001 (Remote Services: Remote Desktop Protocol)
+#   - T1021.002 (Remote Services: SMB/Windows Admin Shares)
+#   - T1021.006 (Remote Services: Windows Remote Management)
+#   - T1570 (Lateral Tool Transfer)
+# Data Sources: index=sysmon (EventID=1, 3), index=windows (EventCode=4624, 5140, 5145)
+# ==============================================================================
+
+(index=windows (EventCode=4624 OR EventCode=5140 OR EventCode=5145) earliest=-7d) 
+OR (index=sysmon earliest=-7d)
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| rex field=_raw "<Data Name='Image'>(?<Image>[^<]+)</Data>"
+| rex field=_raw "<Data Name='CommandLine'>(?<CommandLine>[^<]*)</Data>"
+| rex field=_raw "<Data Name='ParentImage'>(?<ParentImage>[^<]+)</Data>"
+| rex field=_raw "<Data Name='SourceIp'>(?<SourceIp>[^<]+)</Data>"
+| rex field=_raw "<Data Name='DestinationIp'>(?<DestinationIp>[^<]+)</Data>"
+| rex field=_raw "<Data Name='DestinationPort'>(?<DestinationPort>[^<]+)</Data>"
+| eval ShareName=coalesce(ShareName, Share_Name)
+| eval RelativeTargetName=coalesce(RelativeTargetName, Relative_Target_Name)
+| eval IpAddress=coalesce(IpAddress, SourceIp, SourceNetworkAddress)
+| eval process_name=lower(replace(Image, ".*\\\\", ""))
+| eval lateral_indicator=case(
+    process_name IN ("psexesvc.exe", "paexec.exe", "remcomsvc.exe"), "CRITICAL: PsExec Service Host Binary Executing (T1021.002)",
+    match(CommandLine, "(?i)(psexec|paexec|winexe|wmiexec|smbexec)"), "CRITICAL: Lateral Movement Utility Command Line (T1021.002)",
+    EventCode=4624 AND Logon_Type="10" AND NOT match(IpAddress, "(?i)(127\.0\.0\.1|::1)"), "HIGH: Remote Interactive RDP Inbound Session (T1021.001)",
+    EventCode IN (5140, 5145) AND match(ShareName, "(?i)\\\\(ADMIN\$|C\$|IPC\$)") AND match(RelativeTargetName, "(?i)\.(exe|bat|ps1|vbs|dll)"), "CRITICAL: Executable Staged Across Administrative Share (T1570 / T1021.002)",
+    EventID=3 AND DestinationPort IN ("5985", "5986"), "MEDIUM: WinRM Remote Management Traffic (T1021.006)",
+    EventCode=4624 AND Logon_Type="3" AND match(TargetUserName, "(?i)(administrator|admin)") AND NOT match(IpAddress, "(?i)(127\.0\.0\.1|::1)"), "HIGH: Privileged Administrative SMB Session from Remote IP (T1021.002)",
+    true(), "NORMAL"
+  )
+| search lateral_indicator!="NORMAL"
+| eval remote_endpoint=coalesce(IpAddress, DestinationIp, "N/A")
+| stats count as event_count,
+        values(TargetUserName) as targeted_accounts,
+        values(CommandLine) as command_lines,
+        values(ShareName) as accessed_shares,
+        values(RelativeTargetName) as transferred_files,
+        earliest(_time) as first_seen,
+        latest(_time) as last_seen
+        by lateral_indicator, remote_endpoint, host
+| eval first_seen=strftime(first_seen, "%Y-%m-%d %H:%M:%S"), last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")
+| sort - event_count

@@ -1,0 +1,60 @@
+# ==============================================================================
+# SPL Query: 01-hypothesis-authentication-hunting.spl
+# Project: P8 — MITRE ATT&CK Threat Hunting with Splunk
+# Hypothesis: Threat actors utilize compromised credentials and anomalous logon
+#             types (e.g., Type 3 Network Logons, Type 9 NewCredentials / PtH, 
+#             or off-hours privileged access) to establish initial beachheads 
+#             and move between lab assets undetected by static thresholds.
+# Author: Natto Chakma
+# MITRE ATT&CK: 
+#   - T1078.002 (Valid Accounts: Domain Accounts)
+#   - T1078.003 (Valid Accounts: Local Accounts)
+#   - T1110.001 (Brute Force: Password Guessing)
+#   - T1550.002 (Use Alternate Authentication Material: Pass the Hash)
+# Data Sources: index=windows (EventCode=4624, 4625, 4672)
+# ==============================================================================
+
+index=windows (EventCode=4624 OR EventCode=4625 OR EventCode=4672) earliest=-7d
+| eval EventDescription=case(
+    EventCode=4624, "Successful Logon",
+    EventCode=4625, "Failed Logon",
+    EventCode=4672, "Special Privileges Assigned",
+    true(), "Other"
+  )
+| eval LogonTypeDescription=case(
+    Logon_Type="2", "Interactive (Console)",
+    Logon_Type="3", "Network (SMB/RPC/Share)",
+    Logon_Type="4", "Batch (Scheduled Task)",
+    Logon_Type="5", "Service Startup",
+    Logon_Type="7", "Unlock Workstation",
+    Logon_Type="8", "NetworkCleartext (IIS/Basic)",
+    Logon_Type="9", "NewCredentials (RunAs / Pass-The-Hash)",
+    Logon_Type="10", "RemoteInteractive (RDP)",
+    Logon_Type="11", "CachedInteractive",
+    true(), "Unknown / System (" . Logon_Type . ")"
+  )
+| eval TargetUserName=coalesce(TargetUserName, user, Account_Name)
+| eval TargetDomainName=coalesce(TargetDomainName, domain, Account_Domain)
+| eval SourceNetworkAddress=coalesce(SourceNetworkAddress, IpAddress, src_ip)
+| search NOT TargetUserName IN ("*$*", "SYSTEM", "LOCAL SERVICE", "NETWORK SERVICE", "ANONYMOUS LOGON")
+| eval is_admin=if(match(TargetUserName, "(?i)(admin|root|administrator|svc_.*)"), "High-Privilege", "Standard-User")
+| eval is_suspicious_logon=case(
+    Logon_Type="9", "CRITICAL: Potential Pass-The-Hash / NewCredentials Spawning (T1550.002)",
+    Logon_Type="3" AND is_admin="High-Privilege" AND SourceNetworkAddress!="127.0.0.1" AND isnotnull(SourceNetworkAddress), "HIGH: Privileged Account Network Logon over SMB (T1078 / T1021.002)",
+    EventCode=4672 AND is_admin="High-Privilege", "MEDIUM: Administrative Privilege Assignment (T1078)",
+    EventCode=4625, "SUSPICIOUS: Failed Authentication Attempt (T1110)",
+    true(), "BASELINE: Standard Authentication"
+  )
+| stats 
+    count(eval(EventCode=4624)) as successful_logons,
+    count(eval(EventCode=4625)) as failed_logons,
+    count(eval(EventCode=4672)) as privilege_elevations,
+    values(LogonTypeDescription) as logon_types,
+    values(SourceNetworkAddress) as source_ips,
+    values(Workstation_Name) as source_workstations,
+    earliest(_time) as first_seen,
+    latest(_time) as last_seen
+    by TargetUserName, TargetDomainName, is_suspicious_logon
+| eval first_seen=strftime(first_seen, "%Y-%m-%d %H:%M:%S"), last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")
+| search is_suspicious_logon!="BASELINE: Standard Authentication"
+| sort - failed_logons, - successful_logons

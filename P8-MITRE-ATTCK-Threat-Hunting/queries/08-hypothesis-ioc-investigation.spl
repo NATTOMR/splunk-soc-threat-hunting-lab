@@ -1,0 +1,52 @@
+# ==============================================================================
+# SPL Query: 08-hypothesis-ioc-investigation.spl
+# Project: P8 — MITRE ATT&CK Threat Hunting with Splunk
+# Hypothesis: Adversaries deploy implants and beacon to C2 nodes exhibiting 
+#             abnormal network footprints, high-entropy dynamic DNS queries, 
+#             file droppers staging in volatile folders, or rare binary hashes.
+# Author: Natto Chakma
+# MITRE ATT&CK: 
+#   - T1071.001 (Application Layer Protocol: Web Protocols)
+#   - T1071.004 (Application Layer Protocol: DNS)
+#   - T1105 (Ingress Tool Transfer)
+#   - T1027 (Obfuscated Files or Information)
+# Data Sources: index=sysmon (EventID=1, 3, 11, 22)
+# ==============================================================================
+
+index=sysmon earliest=-7d
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| search EventID IN (1, 3, 11, 22)
+| rex field=_raw "<Data Name='Image'>(?<Image>[^<]+)</Data>"
+| rex field=_raw "<Data Name='CommandLine'>(?<CommandLine>[^<]*)</Data>"
+| rex field=_raw "<Data Name='QueryName'>(?<QueryName>[^<]+)</Data>"
+| rex field=_raw "<Data Name='DestinationIp'>(?<DestinationIp>[^<]+)</Data>"
+| rex field=_raw "<Data Name='DestinationPort'>(?<DestinationPort>[^<]+)</Data>"
+| rex field=_raw "<Data Name='TargetFilename'>(?<TargetFilename>[^<]+)</Data>"
+| rex field=_raw "<Data Name='Hashes'>(?<Hashes>[^<]+)</Data>"
+| rex field=_raw "SHA256=(?<sha256>[A-Fa-f0-9]{64})"
+| rex field=_raw "MD5=(?<md5>[A-Fa-f0-9]{32})"
+| eval ioc_category=case(
+    EventID=22 AND match(QueryName, "(?i)\.(top|xyz|buzz|online|work|icu|kim|cc|tk|ml|ga|cf|gq)$"), "SUSPICIOUS: DNS Lookup to High-Risk / Low-Reputation TLD (T1071.004)",
+    EventID=22 AND match(QueryName, "(?i)(ngrok\.io|duckdns\.org|no-ip\.(org|biz|info)|dynu\.net|hopto\.org)"), "CRITICAL: Dynamic DNS / Port Forwarding C2 Tunnel Query (T1071.004 / T1572)",
+    EventID=22 AND len(QueryName)>45, "HIGH: High-Entropy / Long FQDN Lookup (Potential DNS Tunneling / DGA)",
+    EventID=11 AND match(TargetFilename, "(?i)\\\\(windows\\\\temp|appdata\\\\local\\\\temp)\\\\.*(\.exe|\.ps1|\.vbs|\.bat|\.dll)$"), "HIGH: Executable/Script Staged in Temporary Directory (T1105)",
+    EventID=3 AND NOT DestinationIp IN ("192.168.*", "10.*", "172.16.*", "127.*") AND DestinationPort IN ("4444", "5555", "6666", "7777", "8888", "1337", "31337"), "CRITICAL: Outbound Egress to Known Metasploit / C2 Default Port (T1071)",
+    EventID=1 AND isnotnull(sha256), "FORENSIC: Executable Hash Artifact Captured (T1027 / IOC Triage)",
+    true(), "NORMAL"
+  )
+| search ioc_category!="NORMAL"
+| eval ioc_value=case(
+    EventID=22, QueryName,
+    EventID=11, TargetFilename,
+    EventID=3, DestinationIp . ":" . DestinationPort,
+    EventID=1, coalesce(sha256, md5, Image)
+  )
+| stats count as sighting_count,
+        values(Image) as associated_processes,
+        values(CommandLine) as sample_commands,
+        values(sha256) as sha256_hashes,
+        earliest(_time) as first_observed,
+        latest(_time) as last_observed
+        by ioc_category, ioc_value, host
+| eval first_observed=strftime(first_observed, "%Y-%m-%d %H:%M:%S"), last_observed=strftime(last_observed, "%Y-%m-%d %H:%M:%S")
+| sort - sighting_count

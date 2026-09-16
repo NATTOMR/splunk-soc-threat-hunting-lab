@@ -1,0 +1,358 @@
+<dashboard version="1.1" theme="dark">
+  <label>P8 — MITRE ATT&CK Threat Hunting &amp; Detection Operations</label>
+  <description>Operational SOC Threat Hunting Dashboard: Hypothesis-driven adversary tracking across Windows Sysmon, Security Event Logs, and Linux audit streams mapped to the MITRE ATT&amp;CK Enterprise Framework.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="time_tok" searchWhenChanged="true">
+      <label>Time Range</label>
+      <default>
+        <earliest>-7d@d</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+
+  <!-- Row 1: High-Level Threat Hunting KPIs -->
+  <row>
+    <panel>
+      <single>
+        <title>Total Hunting Detections</title>
+        <search>
+          <query>
+            (index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=windows earliest=$time_tok.earliest$ latest=$time_tok.latest$ EventCode IN (4624, 4625, 4672, 4728, 4732, 7045)) OR (index=linux_security earliest=$time_tok.earliest$ latest=$time_tok.latest$ "sudo:")
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='Image'&gt;(?&lt;Image&gt;[^&lt;]+)&lt;/Data&gt;"
+            | eval is_flagged=case(
+                EventCode=4625, 1,
+                Logon_Type="9", 1,
+                match(CommandLine, "(?i)(certutil|bitsadmin|mshta|regsvr32|rundll32|-enc|bypass|psexec|whoami|schtasks)"), 1,
+                EventCode IN (4728, 4732, 7045), 1,
+                match(_raw, "(?i)(NOT in sudoers|authentication failure)"), 1,
+                true(), 0
+              )
+            | where is_flagged=1
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>15s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Anomalies Across All Tactics</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Active ATT&amp;CK Tactics</title>
+        <search>
+          <query>
+            (index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=windows earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | eval tactic=case(
+                EventCode IN (4624, 4625, 4672), "TA0001: Initial Access / TA0008: Lateral",
+                match(CommandLine, "(?i)(powershell|cmd\.exe|wmic)"), "TA0002: Execution",
+                EventCode=7045 OR match(CommandLine, "(?i)(schtasks|reg\s+add)"), "TA0003: Persistence",
+                EventCode IN (4728, 4732) OR match(CommandLine, "(?i)fodhelper"), "TA0004: Privilege Escalation",
+                match(CommandLine, "(?i)(certutil|bitsadmin|mshta|rundll32)"), "TA0005: Defense Evasion",
+                match(CommandLine, "(?i)(whoami|net\s+user|ipconfig)"), "TA0007: Discovery",
+                true(), "Other"
+              )
+            | where tactic!="Other"
+            | stats dc(tactic) as count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>15s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[3,6]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Unique ATT&amp;CK Matrix Tactics</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Obfuscated PowerShell Invocations</title>
+        <search>
+          <query>
+            index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=1
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | eval cmd_lower=lower(CommandLine)
+            | where match(cmd_lower, "(?i)powershell.*(-(e|en|enc|encodedcommand)\s+|bypass|downloadstring|iex\b)")
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>15s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">T1059.001 Scripting Bypasses</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Living-Off-The-Land (LOLBin) Attacks</title>
+        <search>
+          <query>
+            index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=1
+            | rex field=_raw "&lt;Data Name='Image'&gt;(?&lt;Image&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | eval binary=lower(replace(Image, ".*\\\\", ""))
+            | where binary IN ("certutil.exe", "bitsadmin.exe", "mshta.exe", "regsvr32.exe", "rundll32.exe", "cmstp.exe")
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>15s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">T1218 / T1105 Binary Abuse</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- Row 2: Tactic Distribution & Timeline -->
+  <row>
+    <panel>
+      <chart>
+        <title>Adversary Activity by MITRE ATT&amp;CK Tactic</title>
+        <search>
+          <query>
+            (index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=windows earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=linux_security earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='Image'&gt;(?&lt;Image&gt;[^&lt;]+)&lt;/Data&gt;"
+            | eval tactic=case(
+                EventCode IN (4624, 4625), "TA0001: Initial Access",
+                match(CommandLine, "(?i)(powershell|cmd\.exe|wmic|bash|sh)"), "TA0002: Execution",
+                EventCode=7045 OR match(CommandLine, "(?i)(schtasks|reg\s+add|cron)"), "TA0003: Persistence",
+                EventCode IN (4728, 4732) OR match(CommandLine, "(?i)(fodhelper|sudo)"), "TA0004: Privilege Escalation",
+                match(CommandLine, "(?i)(certutil|bitsadmin|mshta|regsvr32|rundll32)"), "TA0005: Defense Evasion",
+                match(CommandLine, "(?i)(whoami|net\s+user|ipconfig|systeminfo)"), "TA0007: Discovery",
+                match(CommandLine, "(?i)(psexec|paexec|winexe)") OR Logon_Type="10", "TA0008: Lateral Movement",
+                true(), "Other Telemetry"
+              )
+            | where tactic!="Other Telemetry"
+            | top limit=10 tactic
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.legend.placement">right</option>
+      </chart>
+    </panel>
+
+    <panel>
+      <chart>
+        <title>Adversary Execution Timeline over Time</title>
+        <search>
+          <query>
+            index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=1
+            | rex field=_raw "&lt;Data Name='Image'&gt;(?&lt;Image&gt;[^&lt;]+)&lt;/Data&gt;"
+            | eval binary=lower(replace(Image, ".*\\\\", ""))
+            | timechart span=1h count by binary limit=8
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+  </row>
+
+  <!-- Row 3: High Priority Detections (Process Masquerading & LOLBins) -->
+  <row>
+    <panel>
+      <table>
+        <title>Living-Off-The-Land Binaries &amp; Process Masquerading Triage (T1218 / T1036)</title>
+        <search>
+          <query>
+            index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=1
+            | rex field=_raw "&lt;Data Name='Image'&gt;(?&lt;Image&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='ParentImage'&gt;(?&lt;ParentImage&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='User'&gt;(?&lt;User&gt;[^&lt;]+)&lt;/Data&gt;"
+            | eval process_name=lower(replace(Image, ".*\\\\", ""))
+            | eval process_path=lower(Image)
+            | eval hunting_finding=case(
+                process_name="certutil.exe" AND match(CommandLine, "(?i)(-urlcache|-split|-f\s+http)"), "CRITICAL: Certutil Remote Payload Download (T1105)",
+                process_name="bitsadmin.exe" AND match(CommandLine, "(?i)(/transfer|/addfile)"), "HIGH: Bitsadmin Ingress Tool Transfer (T1105)",
+                process_name="mshta.exe" AND match(CommandLine, "(?i)(http|vbscript|javascript)"), "CRITICAL: Mshta Remote Script Execution (T1218.005)",
+                process_name="regsvr32.exe" AND match(CommandLine, "(?i)(/s|/u|/i:http|scrobj.dll)"), "CRITICAL: Regsvr32 Squiblydoo Scriptlet (T1218.010)",
+                process_name="rundll32.exe" AND match(CommandLine, "(?i)(javascript|http|dllregisterserver)"), "HIGH: Rundll32 Suspicious Invocation (T1218.011)",
+                process_name="svchost.exe" AND NOT match(process_path, "^c:\\\\windows\\\\system32\\\\svchost\.exe$"), "CRITICAL: Masqueraded svchost.exe outside System32 (T1036.005)",
+                match(process_path, "(?i)\\\\(appdata|temp|programdata)\\\\.*\.exe$"), "SUSPICIOUS: Executable Spawned from Temp/AppData (T1036)",
+                true(), "NORMAL"
+              )
+            | where hunting_finding!="NORMAL"
+            | stats count as Executions, values(CommandLine) as CommandLine, values(ParentImage) as ParentImage, values(User) as User, latest(_time) as LastSeen by hunting_finding, Image
+            | eval LastSeen=strftime(LastSeen, "%Y-%m-%d %H:%M:%S")
+            | sort - Executions
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+  <!-- Row 4: Obfuscated PowerShell & Command Execution Anomalies -->
+  <row>
+    <panel>
+      <table>
+        <title>Obfuscated PowerShell Threat Matrix (T1059.001 / T1027)</title>
+        <search>
+          <query>
+            index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=1
+            | rex field=_raw "&lt;Data Name='Image'&gt;(?&lt;Image&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='ParentImage'&gt;(?&lt;ParentImage&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='User'&gt;(?&lt;User&gt;[^&lt;]+)&lt;/Data&gt;"
+            | search Image="*\\powershell.exe" OR Image="*\\pwsh.exe"
+            | eval cmd_lower=lower(CommandLine)
+            | eval has_enc=if(match(cmd_lower, "(?i)\s+-(e|en|enc|encodedcommand)\s+"), 30, 0)
+            | eval has_bypass=if(match(cmd_lower, "(?i)\s+-(ep|executionpolicy)\s+bypass"), 20, 0)
+            | eval has_hidden=if(match(cmd_lower, "(?i)\s+-(w|windowstyle)\s+hidden"), 20, 0)
+            | eval has_cradle=if(match(cmd_lower, "(?i)(downloadstring|downloaddata|net\.webclient|invoke-webrequest|iwr)"), 25, 0)
+            | eval score=has_enc+has_bypass+has_hidden+has_cradle
+            | eval threat_level=case(
+                score>=60, "CRITICAL",
+                score>=40, "HIGH",
+                score>=20, "MEDIUM",
+                true(), "LOW"
+              )
+            | where threat_level!="LOW"
+            | table _time, threat_level, score, CommandLine, ParentImage, User
+            | eval _time=strftime(_time, "%Y-%m-%d %H:%M:%S")
+            | sort - score
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">10</option>
+      </table>
+    </panel>
+
+    <panel>
+      <table>
+        <title>Anomalous Parent-Child Spawns (T1059 / T1204.002)</title>
+        <search>
+          <query>
+            index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=1
+            | rex field=_raw "&lt;Data Name='Image'&gt;(?&lt;Image&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='ParentImage'&gt;(?&lt;ParentImage&gt;[^&lt;]+)&lt;/Data&gt;"
+            | eval child_binary=lower(replace(Image, ".*\\\\", ""))
+            | eval parent_binary=lower(replace(ParentImage, ".*\\\\", ""))
+            | where child_binary IN ("cmd.exe", "powershell.exe", "wscript.exe", "cscript.exe")
+            | eval spawn_anomaly=case(
+                parent_binary IN ("winword.exe", "excel.exe", "powerpnt.exe", "outlook.exe"), "CRITICAL: Malicious Document Macro Spawning Shell",
+                parent_binary IN ("w3wp.exe", "httpd.exe", "apache2.exe", "nginx.exe"), "CRITICAL: Web Daemon Spawning Command Shell",
+                parent_binary IN ("spoolsv.exe"), "CRITICAL: Print Spooler Spawning Shell (PrintNightmare)",
+                child_binary="cmd.exe" AND match(CommandLine, "(?i)/c\s+(whoami|net\s+user|ipconfig)"), "MEDIUM: Reconnaissance Discovery Burst",
+                true(), "NORMAL"
+              )
+            | where spawn_anomaly!="NORMAL"
+            | stats count, values(CommandLine) as CommandLine by spawn_anomaly, parent_binary, child_binary
+            | sort - count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">10</option>
+      </table>
+    </panel>
+  </row>
+
+  <!-- Row 5: Persistence & Privilege Escalation -->
+  <row>
+    <panel>
+      <table>
+        <title>Persistence Mechanisms Hunt (T1547.001 / T1053.005 / T1543.003)</title>
+        <search>
+          <query>
+            (index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=windows EventCode=7045 earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=linux_security "CRON" earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | rex field=_raw "&lt;Data Name='TargetObject'&gt;(?&lt;TargetObject&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='ServiceName'&gt;(?&lt;ServiceName&gt;[^&lt;]+)&lt;/Data&gt;"
+            | eval persist_type=case(
+                EventID IN (12, 13) AND match(TargetObject, "(?i)\\\\(Run|RunOnce|Winlogon)"), "Registry Run/Autostart Key",
+                EventID=1 AND match(CommandLine, "(?i)schtasks.*create"), "Scheduled Task CLI Registration",
+                EventCode=7045, "Windows Service Creation",
+                index="linux_security" AND match(_raw, "(?i)cron"), "Linux Crontab Tampering",
+                true(), "NORMAL"
+              )
+            | where persist_type!="NORMAL"
+            | stats count, values(CommandLine) as CommandLine, values(TargetObject) as TargetRegistry, values(ServiceName) as ServiceName by persist_type, host
+            | sort - count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">10</option>
+      </table>
+    </panel>
+
+    <panel>
+      <table>
+        <title>Lateral Movement &amp; Remote Access Triage (T1021 / T1570)</title>
+        <search>
+          <query>
+            (index=windows (EventCode=4624 OR EventCode=5140) earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | rex field=_raw "&lt;Data Name='Image'&gt;(?&lt;Image&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | eval process_name=lower(replace(Image, ".*\\\\", ""))
+            | eval lateral_type=case(
+                process_name IN ("psexesvc.exe", "paexec.exe"), "CRITICAL: PsExec Service Execution",
+                match(CommandLine, "(?i)(psexec|winexe|wmiexec)"), "CRITICAL: Remote Execution CLI Tool",
+                EventCode=4624 AND Logon_Type="10", "HIGH: Remote Interactive RDP Session",
+                EventCode=5140 AND match(ShareName, "(?i)(ADMIN\$|C\$)"), "HIGH: Administrative SMB Share Access",
+                true(), "NORMAL"
+              )
+            | where lateral_type!="NORMAL"
+            | stats count, values(CommandLine) as CommandLine, values(IpAddress) as SourceIPs by lateral_type, host
+            | sort - count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">10</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

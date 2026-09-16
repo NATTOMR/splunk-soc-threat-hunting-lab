@@ -1,0 +1,47 @@
+# ==============================================================================
+# SPL Query: 05-hypothesis-privilege-escalation.spl
+# Project: P8 — MITRE ATT&CK Threat Hunting with Splunk
+# Hypothesis: Adversaries attempt to escalate permissions from initial low-integrity
+#             user contexts by adding accounts to local or domain privileged groups,
+#             executing known UAC bypass binaries, abusing token privileges, or 
+#             leveraging Linux sudo/sudoers misconfigurations.
+# Author: Natto Chakma
+# MITRE ATT&CK: 
+#   - T1098 (Account Manipulation)
+#   - T1548.002 (Abuse Elevation Control Mechanism: Bypass User Account Control)
+#   - T1548.003 (Abuse Elevation Control Mechanism: Sudo and Sudo Caching)
+#   - T1134 (Access Token Manipulation)
+# Data Sources: index=windows (EventCode=4728, 4732, 4672), index=sysmon (EventID=1), index=linux_security
+# ==============================================================================
+
+(index=windows (EventCode=4728 OR EventCode=4732 OR EventCode=4672) earliest=-7d) 
+OR (index=sysmon earliest=-7d) 
+OR (index=linux_security "sudo:" earliest=-7d)
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| rex field=_raw "<Data Name='Image'>(?<Image>[^<]+)</Data>"
+| rex field=_raw "<Data Name='CommandLine'>(?<CommandLine>[^<]*)</Data>"
+| rex field=_raw "<Data Name='ParentImage'>(?<ParentImage>[^<]+)</Data>"
+| rex field=_raw "<Data Name='User'>(?<User>[^<]+)</Data>"
+| rex field=_raw "(?<sudo_user>\w+)\s*:\s*TTY=(?<tty>[^\s]+)\s*;\s*PWD=(?<pwd>[^\s]+)\s*;\s*USER=(?<target_user>[^\s]+)\s*;\s*COMMAND=(?<sudo_command>.*)"
+| eval GroupName=coalesce(TargetUserName, MemberName, Group_Name)
+| eval MemberName=coalesce(MemberName, SubjectUserName, Account_Name)
+| eval priv_finding=case(
+    EventCode=4728 OR EventCode=4732, "CRITICAL: Account Added to Privileged Local/Domain Security Group (T1098)",
+    EventID=1 AND match(CommandLine, "(?i)(fodhelper\.exe|computerdefaults\.exe|slui\.exe|eventvwr\.exe|sdclt\.exe)"), "CRITICAL: Potential UAC Elevation Bypass Living-Off-The-Land (T1548.002)",
+    EventID=1 AND match(CommandLine, "(?i)net(\.exe)?\s+(localgroup|group)\s+(administrators|domain\s+admins)\s+.*\/add"), "CRITICAL: User Added to Administrators via Net CLI (T1098)",
+    index="linux_security" AND match(sudo_command, "(?i)(/bin/bash|/bin/sh|/bin/zsh|nc|ncat|python|perl|ruby|vi|vim|find|less|more|awk)\b"), "CRITICAL: Sudo Privileged Shell Spawn / GTFOBins Escalation (T1548.003)",
+    index="linux_security" AND match(_raw, "(?i)(incorrect password attempts|authentication failure|NOT in sudoers)"), "HIGH: Unauthorized Sudo Escalation Attempt (T1548.003)",
+    EventCode=4672 AND match(MemberName, "(?i)(guest|temp|test|default)"), "HIGH: Suspicious Account Assigned Administrative Rights (T1078)",
+    true(), "NORMAL"
+  )
+| search priv_finding!="NORMAL"
+| eval activity_detail=coalesce(CommandLine, sudo_command, "Added " . MemberName . " to " . GroupName, _raw)
+| stats count as incident_count,
+        values(activity_detail) as activity_details,
+        values(User) as actors,
+        values(sudo_user) as linux_actors,
+        earliest(_time) as first_detected,
+        latest(_time) as last_detected
+        by priv_finding, host
+| eval first_detected=strftime(first_detected, "%Y-%m-%d %H:%M:%S"), last_detected=strftime(last_detected, "%Y-%m-%d %H:%M:%S")
+| sort - incident_count

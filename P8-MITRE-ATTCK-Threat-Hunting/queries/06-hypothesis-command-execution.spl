@@ -1,0 +1,48 @@
+# ==============================================================================
+# SPL Query: 06-hypothesis-command-execution.spl
+# Project: P8 — MITRE ATT&CK Threat Hunting with Splunk
+# Hypothesis: Adversaries gain post-exploitation command execution by inducing 
+#             anomalous parent-child process relationships, such as Office 
+#             applications, PDF readers, web daemons, or print spoolers spawning 
+#             cmd.exe, powershell.exe, or script interpreters.
+# Author: Natto Chakma
+# MITRE ATT&CK: 
+#   - T1059.003 (Command and Scripting Interpreter: Windows Command Shell)
+#   - T1059.004 (Command and Scripting Interpreter: Unix Shell)
+#   - T1047 (Windows Management Instrumentation)
+#   - T1204.002 (User Execution: Malicious File)
+# Data Sources: index=sysmon (EventID=1)
+# ==============================================================================
+
+index=sysmon earliest=-7d
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| search EventID=1
+| rex field=_raw "<Data Name='Image'>(?<Image>[^<]+)</Data>"
+| rex field=_raw "<Data Name='CommandLine'>(?<CommandLine>[^<]*)</Data>"
+| rex field=_raw "<Data Name='ParentImage'>(?<ParentImage>[^<]+)</Data>"
+| rex field=_raw "<Data Name='ParentCommandLine'>(?<ParentCommandLine>[^<]*)</Data>"
+| rex field=_raw "<Data Name='User'>(?<User>[^<]+)</Data>"
+| rex field=_raw "<Data Name='ProcessId'>(?<ProcessId>[^<]+)</Data>"
+| rex field=_raw "<Data Name='ParentProcessId'>(?<ParentProcessId>[^<]+)</Data>"
+| eval child_binary=lower(replace(Image, ".*\\\\", ""))
+| eval parent_binary=lower(replace(ParentImage, ".*\\\\", ""))
+| eval is_shell=if(child_binary IN ("cmd.exe", "powershell.exe", "pwsh.exe", "wscript.exe", "cscript.exe", "mshta.exe", "bash.exe"), 1, 0)
+| eval execution_anomaly=case(
+    is_shell=1 AND parent_binary IN ("winword.exe", "excel.exe", "powerpnt.exe", "outlook.exe", "acrord32.exe", "acrobat.exe"), "CRITICAL: Malicious Document Dropper Spawning Command Shell (T1204.002 / T1059)",
+    is_shell=1 AND parent_binary IN ("w3wp.exe", "httpd.exe", "apache.exe", "nginx.exe", "tomcat.exe", "php-cgi.exe"), "CRITICAL: Web Shell / Application Exploitation Spawning Shell (T1505.003 / T1059)",
+    is_shell=1 AND parent_binary IN ("spoolsv.exe"), "CRITICAL: Print Spooler Exploitation Spawning Shell (PrintNightmare - T1068)",
+    child_binary="wmic.exe" AND match(CommandLine, "(?i)process\s+call\s+create"), "HIGH: WMI Remote/Local Process Creation (T1047)",
+    child_binary="cmd.exe" AND match(CommandLine, "(?i)/c\s+(whoami|net\s+user|ipconfig|systeminfo|quser)"), "MEDIUM: Automated Post-Exploitation Discovery Recon Burst (T1082 / T1087)",
+    is_shell=1 AND parent_binary IN ("sqlservr.exe", "mysqld.exe", "postgres.exe"), "CRITICAL: Database Daemon Spawning Interactive Shell (T1059)",
+    true(), "NORMAL"
+  )
+| search execution_anomaly!="NORMAL"
+| stats count as execution_count,
+        values(CommandLine) as spawned_commands,
+        values(ParentCommandLine) as parent_commands,
+        values(User) as executed_users,
+        earliest(_time) as first_seen,
+        latest(_time) as last_seen
+        by execution_anomaly, parent_binary, child_binary, host
+| eval first_seen=strftime(first_seen, "%Y-%m-%d %H:%M:%S"), last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")
+| sort - execution_count

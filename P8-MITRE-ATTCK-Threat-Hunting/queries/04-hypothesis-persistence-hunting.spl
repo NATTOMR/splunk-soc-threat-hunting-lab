@@ -1,0 +1,49 @@
+# ==============================================================================
+# SPL Query: 04-hypothesis-persistence-hunting.spl
+# Project: P8 — MITRE ATT&CK Threat Hunting with Splunk
+# Hypothesis: Threat actors maintain foothold survival across reboots by altering
+#             Windows Registry Run/RunOnce autostart keys, registering scheduled
+#             tasks pointing to script interpreters, creating rogue services, 
+#             or implanting recurring cron tasks on Linux endpoints.
+# Author: Natto Chakma
+# MITRE ATT&CK: 
+#   - T1547.001 (Boot or Logon Autostart Execution: Registry Run Keys)
+#   - T1053.005 (Scheduled Task/Job: Scheduled Task)
+#   - T1543.003 (Create or Modify System Process: Windows Service)
+#   - T1053.003 (Scheduled Task/Job: Cron)
+# Data Sources: index=sysmon (EventID=1, 12, 13), index=windows (EventCode=7045), index=linux_security
+# ==============================================================================
+
+(index=sysmon earliest=-7d) OR (index=windows EventCode=7045 earliest=-7d) OR (index=linux_security ("CRON" OR "crontab") earliest=-7d)
+| eval EventSource=case(
+    index="windows" AND EventCode=7045, "Windows Service Installation (EventCode 7045)",
+    index="linux_security", "Linux Cron Persistence",
+    true(), "Sysmon Telemetry"
+  )
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| rex field=_raw "<Data Name='TargetObject'>(?<TargetObject>[^<]+)</Data>"
+| rex field=_raw "<Data Name='Details'>(?<Details>[^<]+)</Data>"
+| rex field=_raw "<Data Name='Image'>(?<Image>[^<]+)</Data>"
+| rex field=_raw "<Data Name='CommandLine'>(?<CommandLine>[^<]*)</Data>"
+| rex field=_raw "<Data Name='User'>(?<User>[^<]+)</Data>"
+| rex field=_raw "<Data Name='ServiceName'>(?<ServiceName>[^<]+)</Data>"
+| rex field=_raw "<Data Name='ImagePath'>(?<ServiceImagePath>[^<]+)</Data>"
+| eval persistence_type=case(
+    EventID IN (12, 13) AND match(TargetObject, "(?i)\\\\(Run|RunOnce|RunServices|Winlogon\\\\(Userinit|Shell))"), "CRITICAL: Registry Autostart Key Modification (T1547.001)",
+    EventID=1 AND match(CommandLine, "(?i)schtasks(\.exe)?\s+/(create|change)"), "HIGH: Scheduled Task Created via CLI (T1053.005)",
+    EventID=1 AND match(CommandLine, "(?i)sc(\.exe)?\s+(create|config)"), "HIGH: Windows Service Creation via SC.exe (T1543.003)",
+    EventCode=7045, "HIGH: New Windows Service Registered in System Log (T1543.003)",
+    index="linux_security" AND match(_raw, "(?i)(crontab.*edit|cron.*RELOAD|hourly|daily|crontab.*added)"), "MEDIUM: Linux Crontab Entry Mutation (T1053.003)",
+    true(), "NORMAL"
+  )
+| search persistence_type!="NORMAL"
+| eval persistence_detail=coalesce(TargetObject . " -> " . Details, CommandLine, ServiceName . " (" . ServiceImagePath . ")", _raw)
+| stats count as detection_count,
+        values(persistence_detail) as artifact_details,
+        values(User) as target_users,
+        values(Image) as executing_binaries,
+        earliest(_time) as first_observed,
+        latest(_time) as last_observed
+        by persistence_type, host
+| eval first_observed=strftime(first_observed, "%Y-%m-%d %H:%M:%S"), last_observed=strftime(last_observed, "%Y-%m-%d %H:%M:%S")
+| sort - detection_count

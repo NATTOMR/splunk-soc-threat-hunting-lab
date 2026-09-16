@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SOC Threat Hunting Engagement Report: Project P8 — MITRE ATT&amp;CK Threat Hunting with Splunk</title>
+<style>
+  @page {
+    size: A4;
+    margin: 12mm 10mm 12mm 10mm;
+    @bottom-right {
+      content: counter(page);
+    }
+  }
+  * {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+    color: #1f2937;
+    background-color: #ffffff;
+    line-height: 1.45;
+    font-size: 8.5pt;
+    margin: 0;
+    padding: 0;
+  }
+  .header-banner {
+    border-bottom: 2px solid #0284c7;
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+  }
+  .lab-tag {
+    font-size: 7.5pt;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    color: #0284c7;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  h1 {
+    font-size: 14.5pt;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 3px 0;
+    line-height: 1.2;
+  }
+  .subtitle {
+    font-size: 8.5pt;
+    color: #475569;
+    margin-bottom: 6px;
+  }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 6px 8px;
+    margin-bottom: 10px;
+    font-size: 7.5pt;
+  }
+  .meta-item strong {
+    display: block;
+    color: #64748b;
+    font-size: 6.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 1px;
+  }
+  .meta-item span {
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 6.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .badge-success { background-color: #dcfce7; color: #166534; }
+  .badge-danger { background-color: #fee2e2; color: #991b1b; }
+  .badge-info { background-color: #e0f2fe; color: #0369a1; }
+  .badge-warning { background-color: #fef3c7; color: #92400e; }
+  
+  .kpi-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .kpi-card {
+    background-color: #0f172a;
+    color: #ffffff;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border-left: 4px solid #0284c7;
+  }
+  .kpi-title {
+    font-size: 6.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #94a3b8;
+    margin-bottom: 3px;
+  }
+  .kpi-value {
+    font-size: 13.5pt;
+    font-weight: 800;
+    color: #38bdf8;
+    margin-bottom: 1px;
+  }
+  .kpi-desc {
+    font-size: 6.5pt;
+    color: #cbd5e1;
+  }
+
+  h2 {
+    font-size: 10pt;
+    font-weight: 700;
+    color: #0f172a;
+    border-bottom: 1px solid #cbd5e1;
+    padding-bottom: 2px;
+    margin: 10px 0 4px 0;
+  }
+  h3 {
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 6px 0 3px 0;
+  }
+  p {
+    margin: 0 0 5px 0;
+  }
+  ul, ol {
+    margin: 0 0 6px 0;
+    padding-left: 16px;
+  }
+  li {
+    margin-bottom: 2px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 4px 0 8px 0;
+    font-size: 7pt;
+  }
+  th, td {
+    border: 1px solid #cbd5e1;
+    padding: 3px 5px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background-color: #f1f5f9;
+    font-weight: 700;
+    color: #334155;
+  }
+  tr:nth-child(even) td {
+    background-color: #f8fafc;
+  }
+  .code-block {
+    background-color: #0f172a;
+    color: #f8fafc;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 6.5pt;
+    margin: 4px 0;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .footer-note {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 5px;
+    font-size: 6.5pt;
+    color: #64748b;
+    text-align: center;
+    margin-top: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header-banner">
+  <div class="lab-tag">SPLUNK SOC &amp; THREAT HUNTING LAB &bull; ENGAGEMENT REPORT</div>
+  <h1>P8 &mdash; MITRE ATT&amp;CK Threat Hunting Report</h1>
+  <div class="subtitle">Structured Hypothesis-Driven Threat Hunting Engagement &bull; Ref: HUNT-2026-P8-001</div>
+</div>
+
+<div class="meta-grid">
+  <div class="meta-item">
+    <strong>Engagement Ref</strong>
+    <span>HUNT-2026-P8-001</span>
+  </div>
+  <div class="meta-item">
+    <strong>Engagement Lead</strong>
+    <span>Natto Chakma</span>
+  </div>
+  <div class="meta-item">
+    <strong>Framework</strong>
+    <span>MITRE ATT&amp;CK v15 / TaHiTI</span>
+  </div>
+  <div class="meta-item">
+    <strong>Engagement Status</strong>
+    <span class="badge badge-success">Completed &amp; Validated</span>
+  </div>
+  <div class="meta-item">
+    <strong>Primary SIEM</strong>
+    <span>Splunk Enterprise 10.4.3</span>
+  </div>
+  <div class="meta-item">
+    <strong>Endpoints Analyzed</strong>
+    <span>WinServer2022 / ubuntu-p3</span>
+  </div>
+  <div class="meta-item">
+    <strong>Adversary Node</strong>
+    <span>Kali Linux (192.168.100.6)</span>
+  </div>
+  <div class="meta-item">
+    <strong>Engagement Scope</strong>
+    <span class="badge badge-info">8 Tactical Hunt Hypotheses</span>
+  </div>
+</div>
+
+<div class="kpi-container">
+  <div class="kpi-card">
+    <div class="kpi-title">Telemetry Events Analyzed</div>
+    <div class="kpi-value">14,820</div>
+    <div class="kpi-desc">Sysmon XML, WinEvent, Linux logs</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-title">Hypotheses Tested</div>
+    <div class="kpi-value">8 / 8</div>
+    <div class="kpi-desc">Multi-source correlation</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-title">ATT&amp;CK Tactics Mapped</div>
+    <div class="kpi-value">8 Tactics</div>
+    <div class="kpi-desc">Initial Access to C2</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-title">Durable Rules Engineered</div>
+    <div class="kpi-value">4 Rules</div>
+    <div class="kpi-desc">Converted to permanent SIEM alerts</div>
+  </div>
+</div>
+
+<h2>1. Executive Summary</h2>
+<p>
+In September 2026, the Security Operations Center (SOC) executed a proactive, hypothesis-driven threat hunting mission within the corporate infrastructure. Unlike traditional reactive alerts triggered by static signatures, this engagement operated under the assumption that advanced threat actors had achieved persistence or established undetected footholds using legitimate system binaries, stealth scripting wrappers, and Living-Off-The-Land (LOLBin) tradecraft.
+</p>
+<p>
+The hunt tested 8 empirical hypotheses spanning Initial Access, Execution, Persistence, Privilege Escalation, Defense Evasion, Discovery, Lateral Movement, and Command &amp; Control. Analyzing 14,820 events across Splunk Enterprise, the hunt successfully identified covert adversary techniques including Base64-obfuscated PowerShell download cradles, <code>certutil.exe</code> remote payload transfer, registry autostart persistence, and dynamic DNS querying.
+</p>
+
+<h2>2. Laboratory Topology &amp; Monitored Telemetry Scope</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Role</th>
+      <th>Hostname</th>
+      <th>IP Address</th>
+      <th>Operating System</th>
+      <th>Monitored Telemetry Channels</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Central SIEM</strong></td>
+      <td><code>wazuh-server</code></td>
+      <td><code>192.168.100.7</code></td>
+      <td>Ubuntu 24.04 LTS</td>
+      <td>Splunk Enterprise 10.4.3 (TCP 9997 forwarder receiver, Web UI port 18000)</td>
+    </tr>
+    <tr>
+      <td><strong>Target Endpoint</strong></td>
+      <td><code>WinServer2022</code> / Win 11</td>
+      <td><code>192.168.100.8</code></td>
+      <td>Windows Server 2022</td>
+      <td><code>index=sysmon</code> (Sysmon v15.15 XML, EventIDs 1, 3, 11, 12, 13, 22), <code>index=windows</code> (Security, System)</td>
+    </tr>
+    <tr>
+      <td><strong>Linux Server</strong></td>
+      <td><code>ubuntu-p3</code></td>
+      <td><code>192.168.100.9</code></td>
+      <td>Ubuntu 24.04.5 LTS</td>
+      <td><code>index=linux_security</code> (<code>/var/log/auth.log</code>, <code>syslog</code>, audit streams)</td>
+    </tr>
+    <tr>
+      <td><strong>Adversary Node</strong></td>
+      <td><code>kali</code></td>
+      <td><code>192.168.100.6</code></td>
+      <td>Kali Linux 2024.x</td>
+      <td>Controlled attack emulation and telemetry generation harness</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>3. Threat Hunting Methodology &amp; Workflow</h2>
+<p>
+The hunt strictly adhered to the 8-stage hunting pipeline aligned with TaHiTI and PEAK methodologies:
+<strong>Threat Hypothesis &rarr; MITRE ATT&amp;CK Technique &rarr; Telemetry Identification &rarr; SPL Hunt Execution &rarr; Event Correlation &rarr; Forensic Investigation &rarr; Evidence Documentation &rarr; Conclusion &amp; Hardening.</strong>
+</p>
+
+<h2>4. Hypothesis Testing Results &amp; Forensic Findings</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Hunting Hypothesis</th>
+      <th>MITRE ATT&amp;CK ID</th>
+      <th>Telemetry Evaluated</th>
+      <th>Outcome</th>
+      <th>Key Forensic Evidence</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>H1</strong></td>
+      <td>Anomalous Logons &amp; Pass-The-Hash</td>
+      <td><code>T1078</code>, <code>T1550.002</code></td>
+      <td><code>index=windows</code> (4624, 4625, 4672)</td>
+      <td><span class="badge badge-success">Clean (Baseline)</span></td>
+      <td>Observed standard Type 2 console &amp; Type 4 batch authentications; no unauthorized Logon Type 9 (NewCredentials).</td>
+    </tr>
+    <tr>
+      <td><strong>H2</strong></td>
+      <td>LOLBin Ingress &amp; Masquerading</td>
+      <td><code>T1218</code>, <code>T1105</code>, <code>T1036.005</code></td>
+      <td><code>index=sysmon</code> (EventID 1)</td>
+      <td><span class="badge badge-danger">Threat Identified</span></td>
+      <td>Execution of <code>certutil.exe -urlcache -split -f</code> staging files into <code>%TEMP%</code> directory.</td>
+    </tr>
+    <tr>
+      <td><strong>H3</strong></td>
+      <td>Obfuscated PowerShell Execution</td>
+      <td><code>T1059.001</code>, <code>T1027</code></td>
+      <td><code>index=sysmon</code> (EventID 1)</td>
+      <td><span class="badge badge-danger">Threat Identified</span></td>
+      <td>PowerShell launched with <code>-ep bypass -w hidden -enc SQBFAFgA...</code> (Threat score calculated at 70/100).</td>
+    </tr>
+    <tr>
+      <td><strong>H4</strong></td>
+      <td>Endpoint Autostart Persistence</td>
+      <td><code>T1547.001</code>, <code>T1053.005</code></td>
+      <td><code>index=sysmon</code> (1, 12, 13), <code>index=windows</code> (7045)</td>
+      <td><span class="badge badge-danger">Threat Identified</span></td>
+      <td>Registry key write under <code>HKCU:\...\CurrentVersion\Run</code> and <code>schtasks /create</code> task generation.</td>
+    </tr>
+    <tr>
+      <td><strong>H5</strong></td>
+      <td>Privilege Escalation &amp; Sudo Abuse</td>
+      <td><code>T1098</code>, <code>T1548.003</code></td>
+      <td><code>index=windows</code> (4728), <code>index=linux_security</code></td>
+      <td><span class="badge badge-warning">Emulation Confirmed</span></td>
+      <td>Sudo permission checking (<code>sudo -l</code>) and administrative group auditing telemetry.</td>
+    </tr>
+    <tr>
+      <td><strong>H6</strong></td>
+      <td>Parent-Child Execution Anomalies</td>
+      <td><code>T1059.003</code>, <code>T1204.002</code></td>
+      <td><code>index=sysmon</code> (EventID 1)</td>
+      <td><span class="badge badge-danger">Threat Identified</span></td>
+      <td>Rapid discovery execution burst via <code>cmd.exe /c whoami &amp; whoami /priv &amp; net user</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>H7</strong></td>
+      <td>Lateral Movement &amp; Remote Access</td>
+      <td><code>T1021.001</code>, <code>T1021.002</code></td>
+      <td><code>index=windows</code> (4624, 5140), <code>index=sysmon</code></td>
+      <td><span class="badge badge-success">Clean (Baseline)</span></td>
+      <td>Isolated administrative SMB sessions; no active PsExec (<code>PSEXESVC.exe</code>) lateral traversal.</td>
+    </tr>
+    <tr>
+      <td><strong>H8</strong></td>
+      <td>C2 Dynamic DNS Beaconing</td>
+      <td><code>T1071.004</code>, <code>T1572</code></td>
+      <td><code>index=sysmon</code> (EventID 22)</td>
+      <td><span class="badge badge-danger">Threat Identified</span></td>
+      <td>DNS query telemetry captured outbound resolution attempts to <code>*.duckdns.org</code> namespaces.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>5. Exemplary Threat Hunting SPL Logic</h2>
+<div class="code-block"># Detects Obfuscated PowerShell Execution (T1059.001 / T1027)
+index=sysmon earliest=-7d
+| rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+| search EventID=1
+| rex field=_raw "&lt;Data Name='Image'&gt;(?&lt;Image&gt;[^&lt;]+)&lt;/Data&gt;"
+| rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+| search Image="*\\powershell.exe" OR Image="*\\pwsh.exe"
+| eval cmd_lower=lower(CommandLine)
+| eval has_enc=if(match(cmd_lower, "(?i)\s+-(e|en|enc|encodedcommand)\s+"), 30, 0)
+| eval has_bypass=if(match(cmd_lower, "(?i)\s+-(ep|executionpolicy)\s+bypass"), 20, 0)
+| eval has_hidden=if(match(cmd_lower, "(?i)\s+-(w|windowstyle)\s+hidden"), 20, 0)
+| eval has_cradle=if(match(cmd_lower, "(?i)(downloadstring|downloaddata|net\.webclient|invoke-webrequest|iwr)"), 25, 0)
+| eval threat_score=has_enc+has_bypass+has_hidden+has_cradle
+| where threat_score&gt;=40
+| table _time, threat_score, CommandLine, Image</div>
+
+<h2>6. Strategic Remediation &amp; Hardening Recommendations</h2>
+<ol>
+  <li><strong>Operationalize Permanent Correlation Searches:</strong> Convert hunting queries for LOLBins (<code>certutil</code>/<code>mshta</code>) and Obfuscated PowerShell into real-time Splunk scheduled alerts.</li>
+  <li><strong>Application Control &amp; Constrained Language Mode (CLM):</strong> Restrict PowerShell execution policy via Group Policy and enforce Constrained Language Mode to block dynamic code injection.</li>
+  <li><strong>Egress Firewalling for LOLBins:</strong> Block Windows system binaries such as <code>certutil.exe</code> and <code>bitsadmin.exe</code> from initiating outbound internet connections directly at the host firewall level.</li>
+  <li><strong>DNS Sinkholing:</strong> Configure DNS filtering on corporate resolvers to immediately sinkhole queries resolving to dynamic DNS domains (e.g. <code>duckdns.org</code>, <code>ngrok.io</code>).</li>
+</ol>
+
+<div class="footer-note">
+  Splunk SOC &amp; Threat Hunting Lab &bull; Project P8 Engagement Deliverable &bull; Document Classification: TLP:CLEAR
+</div>
+
+</body>
+</html>

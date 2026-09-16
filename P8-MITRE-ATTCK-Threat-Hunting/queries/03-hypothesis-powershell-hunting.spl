@@ -1,0 +1,48 @@
+# ==============================================================================
+# SPL Query: 03-hypothesis-powershell-hunting.spl
+# Project: P8 — MITRE ATT&CK Threat Hunting with Splunk
+# Hypothesis: Threat actors leverage stealthy PowerShell command flags (-enc, 
+#             -nop, -w hidden, -ep bypass), interactive download cradles 
+#             (WebClient.DownloadString, Invoke-WebRequest), and in-memory 
+#             reflection to bypass static script-block inspection.
+# Author: Natto Chakma
+# MITRE ATT&CK: 
+#   - T1059.001 (Command and Scripting Interpreter: PowerShell)
+#   - T1027 (Obfuscated Files or Information: Obfuscated Arguments)
+#   - T1105 (Ingress Tool Transfer)
+# Data Sources: index=sysmon (EventID=1)
+# ==============================================================================
+
+index=sysmon earliest=-7d
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| search EventID=1
+| rex field=_raw "<Data Name='Image'>(?<Image>[^<]+)</Data>"
+| rex field=_raw "<Data Name='CommandLine'>(?<CommandLine>[^<]*)</Data>"
+| rex field=_raw "<Data Name='ParentImage'>(?<ParentImage>[^<]+)</Data>"
+| rex field=_raw "<Data Name='User'>(?<User>[^<]+)</Data>"
+| search Image="*\\powershell.exe" OR Image="*\\pwsh.exe"
+| eval cmd_lower=lower(CommandLine)
+| eval has_encoded_flag=if(match(cmd_lower, "(?i)\s+-(e|en|enc|encodedcommand)\s+"), 1, 0)
+| eval has_bypass_flag=if(match(cmd_lower, "(?i)\s+-(ep|executionpolicy)\s+bypass"), 1, 0)
+| eval has_hidden_flag=if(match(cmd_lower, "(?i)\s+-(w|windowstyle)\s+hidden"), 1, 0)
+| eval has_noprofile_flag=if(match(cmd_lower, "(?i)\s+-(nop|noprofile)"), 1, 0)
+| eval has_download_cradle=if(match(cmd_lower, "(?i)(downloadstring|downloaddata|downloadfile|net\.webclient|invoke-webrequest|iwr|curl|wget)"), 1, 0)
+| eval has_iex=if(match(cmd_lower, "(?i)(invoke-expression|\biex\b)"), 1, 0)
+| eval threat_score=has_encoded_flag*30 + has_bypass_flag*20 + has_hidden_flag*20 + has_noprofile_flag*10 + has_download_cradle*25 + has_iex*25
+| eval threat_classification=case(
+    threat_score>=60, "CRITICAL: Obfuscated PowerShell Dropper / In-Memory Execution (T1059.001)",
+    threat_score>=40, "HIGH: Stealth PowerShell Execution Bypass (T1059.001)",
+    threat_score>=20, "MEDIUM: Suspicious PowerShell Parameter Usage (T1059.001)",
+    true(), "LOW: Standard PowerShell Administrative Usage"
+  )
+| search threat_classification!="LOW: Standard PowerShell Administrative Usage"
+| stats count as execution_count,
+        values(CommandLine) as sample_commands,
+        values(ParentImage) as parent_processes,
+        values(User) as executed_by,
+        max(threat_score) as max_score,
+        earliest(_time) as first_seen,
+        latest(_time) as last_seen
+        by threat_classification, Image
+| eval first_seen=strftime(first_seen, "%Y-%m-%d %H:%M:%S"), last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")
+| sort - max_score, - execution_count

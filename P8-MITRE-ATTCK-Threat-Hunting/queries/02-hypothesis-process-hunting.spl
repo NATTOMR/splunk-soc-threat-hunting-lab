@@ -1,0 +1,52 @@
+# ==============================================================================
+# SPL Query: 02-hypothesis-process-hunting.spl
+# Project: P8 — MITRE ATT&CK Threat Hunting with Splunk
+# Hypothesis: Adversaries abuse Living-off-the-Land Binaries (LOLBins) or disguise
+#             malicious payloads by masquerading process names and paths outside 
+#             authorized system directories (e.g., svchost.exe executing from 
+#             AppData or Temp) to evade defensive controls.
+# Author: Natto Chakma
+# MITRE ATT&CK: 
+#   - T1036.005 (Masquerading: Match Legitimate Name or Location)
+#   - T1218.005 (System Binary Proxy Execution: Mshta)
+#   - T1218.011 (System Binary Proxy Execution: Rundll32)
+#   - T1218.010 (System Binary Proxy Execution: Regsvr32)
+#   - T1105 (Ingress Tool Transfer - Certutil/Bitsadmin)
+# Data Sources: index=sysmon (EventID=1)
+# ==============================================================================
+
+index=sysmon earliest=-7d
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| search EventID=1
+| rex field=_raw "<Data Name='Image'>(?<Image>[^<]+)</Data>"
+| rex field=_raw "<Data Name='CommandLine'>(?<CommandLine>[^<]*)</Data>"
+| rex field=_raw "<Data Name='ParentImage'>(?<ParentImage>[^<]+)</Data>"
+| rex field=_raw "<Data Name='ParentCommandLine'>(?<ParentCommandLine>[^<]*)</Data>"
+| rex field=_raw "<Data Name='User'>(?<User>[^<]+)</Data>"
+| rex field=_raw "<Data Name='CurrentDirectory'>(?<CurrentDirectory>[^<]*)</Data>"
+| rex field=_raw "<Data Name='Hashes'>(?<Hashes>[^<]+)</Data>"
+| eval process_name=lower(replace(Image, ".*\\\\", ""))
+| eval parent_process_name=lower(replace(ParentImage, ".*\\\\", ""))
+| eval process_path=lower(Image)
+| eval hunting_finding=case(
+    process_name="certutil.exe" AND match(CommandLine, "(?i)(-urlcache|-split|-f\s+http)"), "CRITICAL: Certutil Remote Payload Download (T1105 / LOLBin)",
+    process_name="bitsadmin.exe" AND match(CommandLine, "(?i)(/transfer|/addfile)"), "HIGH: Bitsadmin Ingress Tool Transfer (T1105 / LOLBin)",
+    process_name="mshta.exe" AND match(CommandLine, "(?i)(http|vbscript|javascript)"), "CRITICAL: Mshta Remote Script Execution (T1218.005)",
+    process_name="regsvr32.exe" AND match(CommandLine, "(?i)(/s|/u|/i:http|scrobj.dll)"), "CRITICAL: Regsvr32 Squiblydoo Scriptlet Execution (T1218.010)",
+    process_name="rundll32.exe" AND match(CommandLine, "(?i)(javascript|http|dllregisterserver)"), "HIGH: Rundll32 Suspicious Invocation (T1218.011)",
+    process_name="svchost.exe" AND NOT match(process_path, "^c:\\\\windows\\\\system32\\\\svchost\.exe$"), "CRITICAL: Masqueraded svchost.exe outside System32 (T1036.005)",
+    process_name="lsass.exe" AND NOT match(process_path, "^c:\\\\windows\\\\system32\\\\lsass\.exe$"), "CRITICAL: Masqueraded lsass.exe outside System32 (T1036.005)",
+    process_name="explorer.exe" AND NOT match(process_path, "^c:\\\\windows\\\\explorer\.exe$"), "HIGH: Masqueraded explorer.exe outside Windows root (T1036.005)",
+    match(process_path, "(?i)\\\\(appdata|temp|programdata|perflogs)\\\\.*\.exe$") AND NOT match(CommandLine, "(?i)(teams|slack|webex|onedrive|zoom|chrome|update)"), "SUSPICIOUS: Executable Spawned from Temp/AppData Path (T1036)",
+    true(), "NORMAL"
+  )
+| search hunting_finding!="NORMAL"
+| stats count as execution_count,
+        values(CommandLine) as command_lines,
+        values(ParentImage) as parent_processes,
+        values(User) as users,
+        earliest(_time) as first_execution,
+        latest(_time) as last_execution
+        by hunting_finding, Image
+| eval first_execution=strftime(first_execution, "%Y-%m-%d %H:%M:%S"), last_execution=strftime(last_execution, "%Y-%m-%d %H:%M:%S")
+| sort - execution_count
