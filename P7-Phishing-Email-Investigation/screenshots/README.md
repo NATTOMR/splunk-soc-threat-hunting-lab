@@ -16,6 +16,7 @@ This directory preserves photographic exhibits supporting phishing email investi
 
 | Exhibit ID | File Reference | Description | Status |
 |:---:|---|---|:---:|
+| **EX-P7-00** | [`p7-workflow-architecture.png`](p7-workflow-architecture.png) | High-resolution infographic illustrating the end-to-end P7 SOC architecture: Kali attacker (TCP 25), Ubuntu Postfix MTA (TCP 9997), and Splunk SIEM. | 🟢 Verified |
 | **EX-P7-01** | [`p7-01-phishing-investigation-dashboard.png`](p7-01-phishing-investigation-dashboard.png) | Operational SOC Phishing Investigation Dashboard displaying real-time KPIs (31 Ingested, 17 Flagged, 12 Attachments, 3 URLs, 12 Spoofed), attack vector breakdown, recipient distribution, and live incident triage queue. | 🟢 Verified |
 | **EX-P7-02** | [`p7-02-email-triage-investigation.png`](p7-02-email-triage-investigation.png) | Splunk Search Head executing targeted SPL correlation query across 401 Postfix syslog events, grouping headers, senders, recipients, and extracted URLs. | 🟢 Verified |
 | **EX-P7-03** | [`p7-03-kali-campaign-execution.png`](p7-03-kali-campaign-execution.png) | Kali Linux adversary terminal executing automated `phish_campaign.sh` script, transmitting 14 benign and malicious emails across TCP 25. | 🟢 Verified |
@@ -27,6 +28,9 @@ This directory preserves photographic exhibits supporting phishing email investi
 ---
 
 ## Visual Exhibits
+
+### Exhibit EX-P7-00: End-to-End P7 Architecture & Workflow Infographic
+![P7 Workflow Architecture](p7-workflow-architecture.png)
 
 ### Exhibit EX-P7-01: Operational SOC Phishing Investigation Dashboard
 ![P7 Phishing Dashboard](p7-01-phishing-investigation-dashboard.png)

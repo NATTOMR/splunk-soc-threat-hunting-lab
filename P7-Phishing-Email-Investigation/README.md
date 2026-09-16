@@ -99,6 +99,8 @@ Splunk Enterprise Indexer (192.168.100.7)
 P7 Phishing Investigation Dashboard & SPL Hunting Library
 ```
 
+![P7 Workflow Architecture](screenshots/p7-workflow-architecture.png)
+
 ---
 
 ## 5. Adversary Emulation Campaign
