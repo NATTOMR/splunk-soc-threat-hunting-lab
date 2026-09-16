@@ -20,6 +20,7 @@ This directory stores visual exhibits, architecture infographics, and live hunt 
 
 | Exhibit Image | Description | Target Telemetry | Verification Status |
 |---|---|---|---|
+| [Figure 0: Live SOC Dashboard](p8-00-soc-threat-hunting-dashboard.png) | Splunk SOC Threat Hunting & Detection Operations Dashboard showing 49 detections across tactics. | Splunk Enterprise | ✅ Live Verified |
 | [Figure 2: PowerShell Threat Score 70](p8-01-powershell-hunt-score-70.png) | Splunk live hunt detecting Base64-obfuscated PowerShell execution (`-ep bypass -w hidden -nop -enc ...`) with empirical **Threat Score 70**. | `index=sysmon` EventID 1 | ✅ Live Verified |
 | [Figure 3: Dynamic DNS C2 Beacon](p8-02-dynamic-dns-c2-beacon.png) | Sysmon EventID 22 DNS query capturing outbound resolution request for `beacon-p8-test.duckdns.org` originating from `powershell.exe`. | `index=sysmon` EventID 22 | ✅ Live Verified |
 | [Figure 4: Persistence Hunt](p8-03-persistence-registry-and-tasks.png) | Live hunt capturing both `schtasks.exe /create` (EventID 1) and `HKCU:\...\Run\P8_ThreatHunt_Persistence` autostart write (EventID 13). | `index=sysmon` EventID 1 & 13 | ✅ Live Verified |

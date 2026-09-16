@@ -33,6 +33,10 @@ The dashboard is defined in [`mitre-attck-threat-hunting-dashboard.xml`](mitre-a
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+![P8 Splunk SOC Threat Hunting Dashboard](../screenshots/p8-00-soc-threat-hunting-dashboard.png)
+
+*Figure — Live Splunk SOC Threat Hunting Dashboard displaying 49 detections, 4 MITRE tactics, 2 obfuscated PowerShell invocations, and 30 Living-off-the-Land attacks.*
+
 ---
 
 ## Panel Breakdown & Query Logic

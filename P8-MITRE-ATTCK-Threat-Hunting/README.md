@@ -221,6 +221,10 @@ The dark-mode dashboard is defined in [`dashboards/mitre-attck-threat-hunting-da
 - **Tactic Visualization:** MITRE Tactic distribution breakdown pie chart and temporal execution area chart.
 - **Triage Tables:** Dedicated operational tables for Process Masquerading, Obfuscated PowerShell, Parent-Child anomalies, Persistence, and Lateral Movement.
 
+![Splunk SOC Threat Hunting & Detection Operations Dashboard](screenshots/p8-00-soc-threat-hunting-dashboard.png)
+
+*Figure — Live Splunk SOC Threat Hunting Dashboard displaying 49 hunting anomalies, 4 unique MITRE ATT&CK tactics, 2 obfuscated PowerShell invocations, and 30 Living-off-the-Land binary detections.*
+
 ---
 
 ## 10. SOC Investigation Playbooks
