@@ -152,6 +152,11 @@ The dashboard [`wazuh_splunk_dashboard.xml`](dashboards/wazuh_splunk_dashboard.x
 9. **High-Severity Alert Triage Queue** (Priority Incident Queue)
 10. **Cross-Index Investigation Timeline** (Correlating `wazuh`, `windows`, and `sysmon`)
 
+### Live Dashboard Exhibit
+
+![P10 — Wazuh + Splunk SIEM Integration Dashboard](screenshots/p10-06-wazuh-splunk-dashboard-overview.png)
+*Figure 7.1: Live Splunk Enterprise operations dashboard displaying 219 real ingested Wazuh alerts, rule activity, severity tiers, and agent inventory.*
+
 ---
 
 ## 8. Incident Investigation Scenario

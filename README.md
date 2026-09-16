@@ -594,6 +594,7 @@ splunk-soc-threat-hunting-lab/
 | [Figure 3](P2-Windows-Security-Monitoring/screenshots/p2-18-splunk-web-admin-dashboard-home.png) | Splunk Enterprise Admin home |
 | [Figure 4](P2-Windows-Security-Monitoring/screenshots/p2-19-splunk-receiver-listen-9997-ufw-rules.png) | TCP 9997 receiver — socket and UFW rules |
 | [Figure 5](P2-Windows-Security-Monitoring/screenshots/p2-01-windows11-sysmon-service-uf-download.png) | Windows 11 — Sysmon service and UF download |
+| [Figure 6](p10/screenshots/p10-06-wazuh-splunk-dashboard-overview.png) | P10 Wazuh + Splunk SIEM Integration Dashboard — live session |
 
 ---
 
