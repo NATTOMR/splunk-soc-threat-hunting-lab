@@ -1,4 +1,4 @@
-# 📧 P7 — Phishing Email Investigation with Splunk
+Phishing Email Investigation with Splunk
 
 [![Status](https://img.shields.io/badge/Status-Completed%20%26%20Validated-success.svg)](#14-project-status)
 [![SIEM](https://img.shields.io/badge/SIEM-Splunk%20Enterprise%2010.4.3-blue.svg)](https://www.splunk.com/)
