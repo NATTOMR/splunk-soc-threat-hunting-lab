@@ -35,38 +35,65 @@ All malicious emails were triaged according to the standard SOC Phishing Playboo
 
 | Parameter | Forensic Detail |
 |---|---|
-| **Primary Ingestion Channel** | Email Security Gateway syslog / message trace stream |
+| **Primary Ingestion Channel** | Postfix MTA Gateway syslog (`/var/log/mail.log`) |
 | **Splunk Ingestion Pipeline** | Splunk Universal Forwarder ➔ Splunk Enterprise (`192.168.100.7:9997`) |
-| **Monitored Indices** | `index=email` (Gateway telemetry), `index=sysmon` (Endpoint telemetry) |
-| **Total Ingested Messages** | 15 gateway events |
-| **High-Risk Phishing Detections** | 8 flagged threats (`risk_score >= 75`) |
-| **Enforcement Action Breakdown** | 6 Quarantined / Blocked, 2 Delivered (subject to immediate inbox purge) |
-| **Adversary Relays / IPs** | `185.220.101.45`, `194.26.29.112`, `91.240.118.22`, `45.142.166.7` |
+| **Monitored Indices** | `index=email` (`sourcetype="postfix:syslog"`), `index=sysmon` |
+| **Total Ingested Messages** | 31 Gateway Transactions (401 Syslog Events) |
+| **High-Risk Phishing Detections** | 17 flagged threats |
+| **Malicious Attachments** | 12 Weaponized Executables / Archives (`.exe`, `.xlsm`, `.iso`) |
+| **Phishing URLs** | 3 Extracted Credential Harvesters & Token Stealers |
+| **Domain Spoofing / Whaling** | 12 Senders Masquerading as C-Suite or Trusted Vendors |
+| **Adversary Relays / IPs** | `192.168.100.6` (Kali Linux wire transmission across TCP 25) |
 | **Victim Impact** | 0 confirmed credential compromises, 0 malware executions |
 
 ---
 
 ## 3. Telemetry Evidence & Detection Queries
 
-The SOC detection engineering team deployed targeted SPL queries to identify anomalous patterns across message envelope, authentication, attachment, and URL fields:
+The SOC detection engineering team deployed targeted SPL queries to correlate Postfix transactions by `queue_id` and extract sender, recipient, subject, attachment, and URL parameters:
 
 ```spl
-# Unified Phishing Triage Pipeline
-index=email sourcetype="email:security"
-| eval clean_sender=lower(sender), clean_domain=lower(sender_domain)
+# Unified Phishing Triage Pipeline (Postfix Syslog)
+index=email sourcetype="postfix:syslog"
+| rex "postfix/\w+\[\d+\]: (?<queue_id>[A-F0-9]{8,12}):"
+| rex "header Subject: (?<subject>.*?) from \w+\["
+| rex "header From: (?<sender>.*?) from \w+\["
+| rex "header To: (?<recipient>.*?) from \w+\["
+| rex "from \w+\[(?<src_ip>\d+\.\d+\.\d+\.\d+)\]"
+| rex "(?:body|header)[^:\n]*:.*?(?<url>https?://[^\s>\"\'\)]+)"
+| rex "(?<attachment_name>[\w\.\-]+\.(?:exe|xlsm|iso|pdf|vbs))"
+| stats 
+    values(src_ip) as src_ip
+    values(sender) as sender
+    values(recipient) as recipient
+    values(subject) as subject
+    values(attachment_name) as attachment_name
+    values(url) as url
+    by queue_id
+| where isnotnull(sender)
+| eval sender=trim(sender, "<> \"'"), recipient=trim(recipient, "<> \"'")
 | eval Threat_Type=case(
-    match(attachment_name, "(?i)\.(pdf\.exe|exe|vbs|xlsm|iso)$"), "Weaponized Attachment (T1566.001)",
-    match(url, "^http://\d{1,3}\.\d{1,3}|(?i)(login|signin|auth|verify|portal)"), "Credential Harvester (T1566.002)",
-    match(clean_sender, "(?i)(ceo|cfo|executive).*@.*(gmail|yahoo)\.com"), "Executive Impersonation / Whaling (T1566)",
-    spf="fail" AND dmarc="fail", "Authentication Alignment Failure / Spoofing",
-    risk_score>=75, "High-Risk Suspicious Lure",
-    true(), "Benign Communication"
+    isnotnull(attachment_name) AND match(attachment_name, "(?i)\.(exe|xlsm|iso|vbs)"), "Weaponized Attachment (T1566.001)",
+    isnotnull(url) AND match(url, "(?i)(login|portal|auth|update|194\.)"), "Credential Harvester (T1566.002)",
+    match(sender, "(?i)(ceo|cfo|executive)"), "Executive Impersonation / Whaling (T1566)",
+    match(subject, "(?i)(action required|mandatory policy)"), "Internal HR Mass Spray (T1566.002)",
+    match(sender, "(?i)(spoofed|quick-invoices|docusign|payroll)"), "Domain Spoofing / Brand Masquerade",
+    true(), "Benign Activity"
   )
-| search Threat_Type!="Benign Communication"
-| table timestamp, sender, recipient, subject, Threat_Type, action, risk_score
-| rename timestamp as "Timestamp", sender as "Sender Address", recipient as "Target Recipient",
-         subject as "Subject", Threat_Type as "Threat Classification", action as "Action Taken",
-         risk_score as "Risk Score"
+| eval Risk_Score=case(
+    match(Threat_Type, "Weaponized"), 98,
+    match(Threat_Type, "Credential"), 94,
+    match(Threat_Type, "Executive"), 92,
+    match(Threat_Type, "Domain Spoofing"), 88,
+    match(Threat_Type, "Internal HR"), 82,
+    true(), 0
+  )
+| search Threat_Type!="Benign Activity"
+| table queue_id, src_ip, sender, recipient, subject, Threat_Type, attachment_name, url, Risk_Score
+| rename queue_id as "Queue ID", src_ip as "Sender IP", sender as "Sender Address",
+         recipient as "Target Recipient", subject as "Email Subject",
+         Threat_Type as "Threat Classification", attachment_name as "Attachment",
+         url as "Extracted URL", Risk_Score as "Risk Score"
 | sort - "Risk Score"
 ```
 

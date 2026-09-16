@@ -7,7 +7,24 @@
 # MITRE ATT&CK: T1566 (Phishing), T1566.002 (Spearphishing Link)
 # ==============================================================================
 
-index=email sourcetype="email:security"
+index=email sourcetype="postfix:syslog"
+| rex "postfix/\w+\[\d+\]: (?<queue_id>[A-F0-9]{8,12}):"
+| rex "header Subject: (?<subject>.*?) from \w+\["
+| rex "header From: (?<sender>.*?) from \w+\["
+| rex "header To: (?<recipient>.*?) from \w+\["
+| rex "from \w+\[(?<src_ip>\d+\.\d+\.\d+\.\d+)\]"
+| rex "(?:body|header)[^:\n]*:.*?(?<url>https?://[^\s>\"\'\)]+)"
+| rex "(?<attachment_name>[\w\.\-]+\.(?:exe|xlsm|iso|pdf|vbs))"
+| stats 
+    values(src_ip) as src_ip
+    values(sender) as sender
+    values(recipient) as recipient
+    values(subject) as subject
+    values(attachment_name) as attachment_name
+    values(url) as url
+    by queue_id
+| where isnotnull(sender)
+| eval sender=trim(sender, "<> \"'"), recipient=trim(recipient, "<> \"'")
 | eval is_vip=if(match(recipient, "(?i)(cfo|ceo|cio|ciso|director|vp|exec|legal)@"), 1, 0)
 | eventstats count as blast_volume, dc(recipient) as unique_targets by sender, subject
 | eval campaign_type=case(
@@ -21,7 +38,6 @@ index=email sourcetype="email:security"
         values(recipient) as targeted_users,
         values(src_ip) as sender_ips,
         values(attachment_name) as attachments,
-        values(url) as urls,
-        values(action) as actions
+        values(url) as urls
         by campaign_type, sender, subject
 | sort - total_emails

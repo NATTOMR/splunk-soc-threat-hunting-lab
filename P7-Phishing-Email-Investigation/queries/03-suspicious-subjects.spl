@@ -7,7 +7,24 @@
 # MITRE ATT&CK: T1566 (Phishing), T1204 (User Execution)
 # ==============================================================================
 
-index=email sourcetype="email:security"
+index=email sourcetype="postfix:syslog"
+| rex "postfix/\w+\[\d+\]: (?<queue_id>[A-F0-9]{8,12}):"
+| rex "header Subject: (?<subject>.*?) from \w+\["
+| rex "header From: (?<sender>.*?) from \w+\["
+| rex "header To: (?<recipient>.*?) from \w+\["
+| rex "from \w+\[(?<src_ip>\d+\.\d+\.\d+\.\d+)\]"
+| rex "(?:body|header)[^:\n]*:.*?(?<url>https?://[^\s>\"\'\)]+)"
+| rex "(?<attachment_name>[\w\.\-]+\.(?:exe|xlsm|iso|pdf|vbs))"
+| stats 
+    values(src_ip) as src_ip
+    values(sender) as sender
+    values(recipient) as recipient
+    values(subject) as subject
+    values(attachment_name) as attachment_name
+    values(url) as url
+    by queue_id
+| where isnotnull(sender)
+| eval sender=trim(sender, "<> \"'"), recipient=trim(recipient, "<> \"'")
 | regex subject="(?i)(urgent|action required|password expirat|wire transfer|overdue|remittance|invoice|delivery notification|package on hold|shared.*sharepoint|mandatory policy|direct deposit|nda signature)"
 | eval lure_category=case(
     match(subject, "(?i)(wire transfer|remittance|invoice|overdue|direct deposit)"), "Financial / Wire Fraud / BEC",
@@ -20,7 +37,6 @@ index=email sourcetype="email:security"
         values(sender) as senders,
         values(recipient) as recipients,
         values(attachment_name) as attachments,
-        values(url) as urls,
-        max(risk_score) as max_risk
+        values(url) as urls
         by lure_category, subject
-| sort - max_risk, - detection_count
+| sort - detection_count

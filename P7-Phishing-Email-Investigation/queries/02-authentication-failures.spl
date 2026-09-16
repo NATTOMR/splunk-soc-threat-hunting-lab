@@ -1,23 +1,35 @@
 # ==============================================================================
 # SPL Query: 02-authentication-failures.spl
 # Project: P7 — Phishing Email Investigation with Splunk
-# Description: Flags email events with SPF, DKIM, and DMARC alignment failures.
+# Description: Flags email relay and authentication anomalies where external hosts
+#              claim unauthorized sender identities or simulate auth spoofing.
 # Author: Natto Chakma
 # MITRE ATT&CK: T1566.002 (Spearphishing Link), T1586 (Compromised Accounts)
 # ==============================================================================
 
-index=email sourcetype="email:security"
+index=email sourcetype="postfix:syslog"
+| rex "postfix/\w+\[\d+\]: (?<queue_id>[A-F0-9]{8,12}):"
+| rex "header Subject: (?<subject>.*?) from \w+\["
+| rex "header From: (?<sender>.*?) from \w+\["
+| rex "header To: (?<recipient>.*?) from \w+\["
+| rex "from \w+\[(?<src_ip>\d+\.\d+\.\d+\.\d+)\]"
+| stats 
+    values(src_ip) as src_ip
+    values(sender) as sender
+    values(recipient) as recipient
+    values(subject) as subject
+    by queue_id
+| where isnotnull(sender)
+| eval sender=trim(sender, "<> \"'"), recipient=trim(recipient, "<> \"'")
+| eval sender_domain=lower(replace(sender, ".*@", ""))
+| eval recipient_domain=lower(replace(recipient, ".*@", ""))
 | eval auth_status=case(
-    spf="fail" AND dkim="fail" AND dmarc="fail", "Critical: Complete Auth Alignment Failure (Spoofing)",
-    spf="fail" AND (dkim="none" OR dkim="fail"), "High: SPF Hard Failure & Missing/Invalid DKIM",
-    dmarc="fail", "Medium: DMARC Policy Rejection",
-    spf="softfail", "Low: SPF Softfail (Questionable Relaying)",
-    true(), "Legitimate / Passed"
+    match(sender_domain, "(?i)(micros0ft|spoofed|quick-invoices|onedrive-secure|docusign-docs)"), "Critical: High-Risk Domain Spoofing & SPF Rejection",
+    match(sender, "(?i)(ceo|cfo|exec).*@gmail\.com"), "High: Free Mail Provider Impersonating C-Suite (SPF Misalignment)",
+    match(sender, "(?i)(payroll|hr).*") AND sender_domain!=recipient_domain, "High: Administrative Display Spoofing from External Relay",
+    true(), "Standard Verification"
   )
-| search auth_status!="Legitimate / Passed"
-| eval timestamp=strftime(_time, "%Y-%m-%d %H:%M:%S")
-| table timestamp, src_ip, sender, recipient, subject, spf, dkim, dmarc, auth_status, action, risk_score
-| rename timestamp as "Timestamp", src_ip as "Sending IP", sender as "Sender", recipient as "Recipient",
-         subject as "Subject", spf as "SPF", dkim as "DKIM", dmarc as "DMARC",
-         auth_status as "Authentication Anomaly", action as "Action", risk_score as "Risk Score"
-| sort - "Risk Score"
+| search auth_status!="Standard Verification"
+| table queue_id, src_ip, sender, recipient, subject, auth_status
+| rename queue_id as "Queue ID", src_ip as "Sending IP", sender as "Sender", recipient as "Recipient",
+         subject as "Subject", auth_status as "Authentication / Relay Anomaly"

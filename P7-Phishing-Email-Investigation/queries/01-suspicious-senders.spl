@@ -2,18 +2,33 @@
 # SPL Query: 01-suspicious-senders.spl
 # Project: P7 — Phishing Email Investigation with Splunk
 # Description: Detects lookalike/homoglyph sender domains, public webmail
-#              impersonating internal leadership (Whaling), and anomalous TLDs.
+#              impersonating internal leadership (Whaling), and anomalous TLDs
+#              from live Postfix syslog email gateway telemetry.
 # Author: Natto Chakma
 # MITRE ATT&CK: T1566 (Phishing), T1036 (Masquerading)
 # ==============================================================================
 
-index=email sourcetype="email:security"
-| eval clean_sender=lower(sender), clean_domain=lower(sender_domain)
+index=email sourcetype="postfix:syslog"
+| rex "postfix/\w+\[\d+\]: (?<queue_id>[A-F0-9]{8,12}):"
+| rex "header Subject: (?<subject>.*?) from \w+\["
+| rex "header From: (?<sender>.*?) from \w+\["
+| rex "header To: (?<recipient>.*?) from \w+\["
+| rex "from \w+\[(?<src_ip>\d+\.\d+\.\d+\.\d+)\]"
+| stats 
+    values(src_ip) as src_ip
+    values(sender) as sender
+    values(recipient) as recipient
+    values(subject) as subject
+    by queue_id
+| where isnotnull(sender)
+| eval sender=trim(sender, "<> \"'"), recipient=trim(recipient, "<> \"'")
+| eval clean_sender=lower(sender), sender_domain=lower(replace(sender, ".*@", ""))
+| eval recipient_domain=lower(replace(recipient, ".*@", ""))
 | eval sender_anomaly=case(
-    match(clean_domain, "(?i)(micros0ft|paypa1|docus1gn|onedr1ve|amaz0n|g00gle)"), "Typosquatting / Homoglyph Domain",
-    match(clean_domain, "(?i)\.(info|online|cc|top|xyz|buzz|work|icu|kim)$"), "Suspicious / Low-Reputation TLD",
-    match(clean_sender, "(?i)(ceo|cfo|executive|director|president).*@.*(gmail|yahoo|hotmail|outlook)\.com"), "Public Webmail Executive Impersonation",
-    sender_domain!=recipient_domain AND match(clean_sender, "(?i)(admin|support|security|payroll|hr).*"), "External Identity Masquerading as Internal Role",
+    match(sender_domain, "(?i)(micros0ft|paypa1|docus1gn|onedr1ve|amaz0n|g00gle)"), "Typosquatting / Homoglyph Domain",
+    match(sender_domain, "(?i)\.(info|online|cc|top|xyz|buzz|work|icu|kim)$"), "Suspicious / Low-Reputation TLD",
+    match(clean_sender, "(?i)(ceo|cfo|executive|director|president).*@.*(gmail|yahoo|hotmail|outlook)\.com"), "Public Webmail Executive Impersonation (Whaling)",
+    sender_domain!=recipient_domain AND match(clean_sender, "(?i)(admin|support|security|payroll|hr).*"), "External Identity Masquerading as Internal Corporate Role",
     true(), "Standard"
   )
 | search sender_anomaly!="Standard"
@@ -21,7 +36,6 @@ index=email sourcetype="email:security"
         values(sender) as sender_addresses,
         values(recipient) as targeted_recipients,
         values(subject) as email_subjects,
-        values(src_ip) as sending_ips,
-        values(action) as enforcement_actions
+        values(src_ip) as sending_ips
         by sender_anomaly, sender_domain
 | sort - incident_count

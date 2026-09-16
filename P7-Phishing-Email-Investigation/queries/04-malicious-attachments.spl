@@ -7,7 +7,23 @@
 # MITRE ATT&CK: T1566.001 (Spearphishing Attachment), T1204.002 (Malicious File)
 # ==============================================================================
 
-index=email sourcetype="email:security" attachment_name!="none"
+index=email sourcetype="postfix:syslog"
+| rex "postfix/\w+\[\d+\]: (?<queue_id>[A-F0-9]{8,12}):"
+| rex "header Subject: (?<subject>.*?) from \w+\["
+| rex "header From: (?<sender>.*?) from \w+\["
+| rex "header To: (?<recipient>.*?) from \w+\["
+| rex "from \w+\[(?<src_ip>\d+\.\d+\.\d+\.\d+)\]"
+| rex "(?<attachment_name>[\w\.\-]+\.(?:exe|xlsm|iso|pdf|vbs))"
+| stats 
+    values(src_ip) as src_ip
+    values(sender) as sender
+    values(recipient) as recipient
+    values(subject) as subject
+    values(attachment_name) as attachment_name
+    by queue_id
+| where isnotnull(sender) AND isnotnull(attachment_name)
+| eval sender=trim(sender, "<> \"'"), recipient=trim(recipient, "<> \"'")
+| mvexpand attachment_name
 | eval clean_attachment=lower(attachment_name)
 | eval threat_type=case(
     match(clean_attachment, "\.(pdf|doc|docx|xls|xlsx|txt)\.(exe|vbs|bat|cmd|scr|ps1|hta)$"), "Critical: Dual-Extension Executable Masking",
@@ -19,9 +35,7 @@ index=email sourcetype="email:security" attachment_name!="none"
     true(), "Standard File Attachment"
   )
 | search threat_type!="Standard File Attachment"
-| table timestamp, sender, recipient, subject, attachment_name, threat_type, attachment_hash, attachment_size_kb, action, risk_score
-| rename timestamp as "Timestamp", sender as "Sender", recipient as "Recipient",
-         subject as "Subject", attachment_name as "Attachment Name", threat_type as "Threat Classification",
-         attachment_hash as "SHA-256 Hash", attachment_size_kb as "Size (KB)",
-         action as "Action", risk_score as "Risk Score"
-| sort - "Risk Score"
+| table queue_id, sender, recipient, subject, attachment_name, threat_type, src_ip
+| rename queue_id as "Queue ID", sender as "Sender", recipient as "Recipient",
+         subject as "Subject", attachment_name as "Attachment Name",
+         threat_type as "Threat Classification", src_ip as "Sending IP"

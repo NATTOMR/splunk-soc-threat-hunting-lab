@@ -2,12 +2,26 @@
 # SPL Query: 05-malicious-urls.spl
 # Project: P7 — Phishing Email Investigation with Splunk
 # Description: Extracts and flags suspicious phishing URLs, IP-literal links,
-#              credential-harvesting endpoints, and URL shorteners.
+#              credential-harvesting endpoints, and URL shorteners from email bodies.
 # Author: Natto Chakma
 # MITRE ATT&CK: T1566.002 (Spearphishing Link), T1204.001 (Malicious Link)
 # ==============================================================================
 
-index=email sourcetype="email:security" url!="none"
+index=email sourcetype="postfix:syslog"
+| rex "postfix/\w+\[\d+\]: (?<queue_id>[A-F0-9]{8,12}):"
+| rex "header Subject: (?<subject>.*?) from \w+\["
+| rex "header From: (?<sender>.*?) from \w+\["
+| rex "header To: (?<recipient>.*?) from \w+\["
+| rex "(?:body|header)[^:\n]*:.*?(?<url>https?://[^\s>\"\'\)]+)"
+| stats 
+    values(sender) as sender
+    values(recipient) as recipient
+    values(subject) as subject
+    values(url) as url
+    by queue_id
+| where isnotnull(sender) AND isnotnull(url)
+| eval sender=trim(sender, "<> \"'"), recipient=trim(recipient, "<> \"'")
+| mvexpand url
 | eval url_risk=case(
     match(url, "^http://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"), "Critical: Direct IP-Literal Host (No DNS/Domain)",
     match(url, "(?i)(login|signin|auth|verify|account|update|portal|checkpoint).*(\.php|\.aspx|\.jsp|\.html)?\?"), "High: Credential Harvesting Endpoint",
@@ -16,9 +30,6 @@ index=email sourcetype="email:security" url!="none"
     true(), "Standard Web Link"
   )
 | search url_risk!="Standard Web Link"
-| eval timestamp=strftime(_time, "%Y-%m-%d %H:%M:%S")
-| table timestamp, sender, recipient, subject, url, url_risk, action, risk_score
-| rename timestamp as "Timestamp", sender as "Sender", recipient as "Recipient",
-         subject as "Subject", url as "Extracted URL", url_risk as "URL Threat Analysis",
-         action as "Enforcement Action", risk_score as "Risk Score"
-| sort - "Risk Score"
+| table queue_id, sender, recipient, subject, url, url_risk
+| rename queue_id as "Queue ID", sender as "Sender", recipient as "Recipient",
+         subject as "Subject", url as "Extracted URL", url_risk as "URL Threat Analysis"
