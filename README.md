@@ -401,11 +401,11 @@ Extracts: source IP, targeted username, destination host, failure count, and fir
 
 Project P10 implements centralized telemetry ingestion, correlation, and SOC dashboard visualization bridging the **Wazuh EDR/XDR** platform with **Splunk Enterprise 10.4.3**.
 
-Full P10 Documentation: [`p10/README.md`](p10/README.md)  
-Integration Architecture: [`p10/architecture/integration-architecture.md`](p10/architecture/integration-architecture.md)  
-Configuration Examples: [`p10/configs/configuration-examples.md`](p10/configs/configuration-examples.md)  
-SOC Dashboard XML: [`p10/dashboards/wazuh_splunk_dashboard.xml`](p10/dashboards/wazuh_splunk_dashboard.xml)  
-Investigation Scenario: [`p10/investigation/investigation-workflow.md`](p10/investigation/investigation-workflow.md)
+Full P10 Documentation: [`P10-Wazuh-Splunk-SIEM-Integration/README.md`](P10-Wazuh-Splunk-SIEM-Integration/README.md)  
+Integration Architecture: [`P10-Wazuh-Splunk-SIEM-Integration/architecture/integration-architecture.md`](P10-Wazuh-Splunk-SIEM-Integration/architecture/integration-architecture.md)  
+Configuration Examples: [`P10-Wazuh-Splunk-SIEM-Integration/configs/configuration-examples.md`](P10-Wazuh-Splunk-SIEM-Integration/configs/configuration-examples.md)  
+SOC Dashboard XML: [`P10-Wazuh-Splunk-SIEM-Integration/dashboards/wazuh_splunk_dashboard.xml`](P10-Wazuh-Splunk-SIEM-Integration/dashboards/wazuh_splunk_dashboard.xml)  
+Investigation Scenario: [`P10-Wazuh-Splunk-SIEM-Integration/investigation/investigation-workflow.md`](P10-Wazuh-Splunk-SIEM-Integration/investigation/investigation-workflow.md)
 
 ### P10 — Lab Roles & Architecture
 
@@ -448,12 +448,12 @@ index=wazuh earliest=-7d 'rule.level'>=10
 
 | Deliverable | Path | Status |
 |---|---|:---:|
-| Integration Architecture | [`p10/architecture/integration-architecture.md`](p10/architecture/integration-architecture.md) | ✅ Complete |
-| Configuration Templates | [`p10/configs/configuration-examples.md`](p10/configs/configuration-examples.md) | ✅ Complete |
-| 8 Modular SPL Queries | [`p10/queries/`](p10/queries/) | ✅ Complete |
-| 10-Panel Simple XML Dashboard | [`p10/dashboards/wazuh_splunk_dashboard.xml`](p10/dashboards/wazuh_splunk_dashboard.xml) | ✅ Complete |
-| Investigation Workflow | [`p10/investigation/investigation-workflow.md`](p10/investigation/investigation-workflow.md) | ✅ Complete |
-| Screenshots Catalog | [`p10/screenshots/README.md`](p10/screenshots/README.md) | ✅ Complete |
+| Integration Architecture | [`P10-Wazuh-Splunk-SIEM-Integration/architecture/integration-architecture.md`](P10-Wazuh-Splunk-SIEM-Integration/architecture/integration-architecture.md) | ✅ Complete |
+| Configuration Templates | [`P10-Wazuh-Splunk-SIEM-Integration/configs/configuration-examples.md`](P10-Wazuh-Splunk-SIEM-Integration/configs/configuration-examples.md) | ✅ Complete |
+| 8 Modular SPL Queries | [`P10-Wazuh-Splunk-SIEM-Integration/queries/`](P10-Wazuh-Splunk-SIEM-Integration/queries/) | ✅ Complete |
+| 10-Panel Simple XML Dashboard | [`P10-Wazuh-Splunk-SIEM-Integration/dashboards/wazuh_splunk_dashboard.xml`](P10-Wazuh-Splunk-SIEM-Integration/dashboards/wazuh_splunk_dashboard.xml) | ✅ Complete |
+| Investigation Workflow | [`P10-Wazuh-Splunk-SIEM-Integration/investigation/investigation-workflow.md`](P10-Wazuh-Splunk-SIEM-Integration/investigation/investigation-workflow.md) | ✅ Complete |
+| Screenshots Catalog | [`P10-Wazuh-Splunk-SIEM-Integration/screenshots/README.md`](P10-Wazuh-Splunk-SIEM-Integration/screenshots/README.md) | ✅ Complete |
 
 ---
 
@@ -566,14 +566,14 @@ splunk-soc-threat-hunting-lab/
 ├── P8-MITRE-ATTCK-Threat-Hunting/
 │   └── README.md                               # P8 project detail and status
 │
-├── p9/
+├── P9-Splunk-SOC-Dashboard/
 │   ├── README.md                               # P9 Splunk SOC Dashboard
 │   ├── dashboards/                             # Production Simple XML dashboard & guide
 │   ├── queries/                                # 14 Modular SPL threat-hunting queries
 │   ├── docs/                                   # Dashboard design & analytical spec
 │   └── screenshots/                            # Dashboard panels catalog
 │
-└── p10/
+└── P10-Wazuh-Splunk-SIEM-Integration/
     ├── README.md                               # P10 Wazuh + Splunk SIEM Integration
     ├── architecture/                           # Integration architecture & transport specification
     ├── configs/                                # Sanitized Splunk and Wazuh configuration examples
@@ -594,7 +594,7 @@ splunk-soc-threat-hunting-lab/
 | [Figure 3](P2-Windows-Security-Monitoring/screenshots/p2-18-splunk-web-admin-dashboard-home.png) | Splunk Enterprise Admin home |
 | [Figure 4](P2-Windows-Security-Monitoring/screenshots/p2-19-splunk-receiver-listen-9997-ufw-rules.png) | TCP 9997 receiver — socket and UFW rules |
 | [Figure 5](P2-Windows-Security-Monitoring/screenshots/p2-01-windows11-sysmon-service-uf-download.png) | Windows 11 — Sysmon service and UF download |
-| [Figure 6](p10/screenshots/p10-06-wazuh-splunk-dashboard-overview.png) | P10 Wazuh + Splunk SIEM Integration Dashboard — live session |
+| [Figure 6](P10-Wazuh-Splunk-SIEM-Integration/screenshots/p10-06-wazuh-splunk-dashboard-overview.png) | P10 Wazuh + Splunk SIEM Integration Dashboard — live session |
 
 ---
 
@@ -618,8 +618,8 @@ splunk-soc-threat-hunting-lab/
 | **Web attack detection** | Apache access log analysis, SQLi, XSS, Path Traversal, and Scanner detection — [Project P6](P6-Web-Attack-Detection/README.md) (**Complete**) |
 | **Phishing email investigation** | Email gateway telemetry, weaponized attachment triage, and whaling detection — [Project P7](P7-Phishing-Email-Investigation/README.md) (**Complete**) |
 | **MITRE ATT&CK threat hunting** | Hypothesis-driven hunting across ATT&CK tactics — [Project P8](P8-MITRE-ATTCK-Threat-Hunting/README.md) (**Complete**) |
-| **Unified SOC Dashboard** | Centralized multi-telemetry visualization & executive metrics — [Project P9](p9/README.md) (**Complete**) |
-| **Wazuh + Splunk integration** | Unified HIDS/SIEM correlation pipeline — [Project P10](p10/README.md) (**Complete**) |
+| **Unified SOC Dashboard** | Centralized multi-telemetry visualization & executive metrics — [Project P9](P9-Splunk-SOC-Dashboard/README.md) (**Complete**) |
+| **Wazuh + Splunk integration** | Unified HIDS/SIEM correlation pipeline — [Project P10](P10-Wazuh-Splunk-SIEM-Integration/README.md) (**Complete**) |
 | **Automated adversary emulation** | Atomic Red Team execution for detection validation |
 | **Sigma rule conversion** | Translate community Sigma rules to Splunk SPL |
 | **Threat intelligence enrichment** | VirusTotal / AbuseIPDB integration via Splunk lookups |
@@ -639,8 +639,8 @@ splunk-soc-threat-hunting-lab/
 | **P6** | [**Web Attack Detection with Splunk**](P6-Web-Attack-Detection/README.md) | ✅ Complete |
 | **P7** | [**Phishing Email Investigation with Splunk**](P7-Phishing-Email-Investigation/README.md) | ✅ Complete |
 | **P8** | [**MITRE ATT&CK Threat Hunting with Splunk**](P8-MITRE-ATTCK-Threat-Hunting/README.md) | ✅ Complete |
-| **P9** | [**Splunk SOC Dashboard**](p9/README.md) | ✅ Complete |
-| **P10** | [**Wazuh + Splunk SIEM Integration**](p10/README.md) | ✅ Complete |
+| **P9** | [**Splunk SOC Dashboard**](P9-Splunk-SOC-Dashboard/README.md) | ✅ Complete |
+| **P10** | [**Wazuh + Splunk SIEM Integration**](P10-Wazuh-Splunk-SIEM-Integration/README.md) | ✅ Complete |
 
 ---
 

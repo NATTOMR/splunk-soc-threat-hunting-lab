@@ -303,4 +303,4 @@ When an analyst spots an anomaly on the dashboard, the following standardized wo
 
 - ⬅️ **Previous Project:** [P8 — MITRE ATT&CK Threat Hunting with Splunk](../P8-MITRE-ATTCK-Threat-Hunting/README.md)
 - 🏠 **Master Repository Overview:** [Splunk SOC & Threat Hunting Lab](../README.md)
-- ➡️ **Next Project:** [P10 — Wazuh + Splunk SIEM Integration](../README.md#project-roadmap)
+- ➡️ **Next Project:** [P10 — Wazuh + Splunk SIEM Integration](../P10-Wazuh-Splunk-SIEM-Integration/README.md)

@@ -23,7 +23,7 @@ By establishing a dedicated ingestion pipeline under `index=wazuh`, SOC analysts
 | **Wazuh Manager** | Ubuntu 24.04 (`192.168.100.7`) | **IMPLEMENTED** | Active analysis daemon emitting JSON records to `/var/ossec/logs/alerts/alerts.json`. |
 | **Wazuh Windows Agent** | Windows 11 (`192.168.100.8`) | **IMPLEMENTED** | `WazuhSvc` running, streaming Security & Sysmon channels over `1514/tcp`. |
 | **Splunk Ingestion Pipeline** | Ubuntu 24.04 (`192.168.100.7`) | **IMPLEMENTED** | Direct local file monitoring (`[monitor:///var/ossec/.../alerts.json]`) into `index=wazuh`. |
-| **SPL Threat Hunting Suite** | Splunk Enterprise 10.4.3 | **IMPLEMENTED** | 8 Modular SPL queries (`p10/queries/01_` to `08_`) grounded in real JSON schemas. |
+| **SPL Threat Hunting Suite** | Splunk Enterprise 10.4.3 | **IMPLEMENTED** | 8 Modular SPL queries (`P10-Wazuh-Splunk-SIEM-Integration/queries/01_` to `08_`) grounded in real JSON schemas. |
 | **SOC Integration Dashboard** | Splunk Web (`127.0.0.1:18000`) | **IMPLEMENTED** | 10-Panel Simple XML dashboard (`dashboards/wazuh_splunk_dashboard.xml`). |
 | **Investigation Scenario** | Multi-host lab | **IMPLEMENTED** | Documented Kali brute-force attack triage, correlation, and RCA workflow. |
 
@@ -84,9 +84,9 @@ Because both Wazuh Manager and Splunk Enterprise operate on the same Ubuntu Serv
 To enable least-privilege reading without root privileges:
 ```bash
 # [Ubuntu Server]
-sudo usermod -aG ossec splunk
-sudo chmod 750 /var/ossec/logs/alerts
-sudo chmod 640 /var/ossec/logs/alerts/alerts.json
+sudo usermod -aG wazuh splunk
+sudo chmod 755 /var/ossec /var/ossec/logs /var/ossec/logs/alerts
+sudo chmod 644 /var/ossec/logs/alerts/alerts.json
 ```
 
 ---
@@ -94,7 +94,7 @@ sudo chmod 640 /var/ossec/logs/alerts/alerts.json
 ## 5. Directory Structure
 
 ```
-p10/
+P10-Wazuh-Splunk-SIEM-Integration/
 ├── README.md                                    # This master documentation file
 ├── architecture/
 │   └── integration-architecture.md              # In-depth architectural & transport specification
@@ -122,7 +122,7 @@ p10/
 
 ## 6. SPL Threat Hunting Suite
 
-All 8 queries are located in [`p10/queries/`](queries/) and have been designed for real-time triage and correlation:
+All 8 queries are located in [`P10-Wazuh-Splunk-SIEM-Integration/queries/`](queries/) and have been designed for real-time triage and correlation:
 
 | File | Title | Primary Target & Fields |
 |---|---|---|
