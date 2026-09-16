@@ -1,0 +1,20 @@
+# ==============================================================================
+# Query 01: Wazuh Event & Alert Summary KPIs
+# Project: P10 — Wazuh + Splunk SIEM Integration
+# Target Index: index=wazuh
+# Data Source: /var/ossec/logs/alerts/alerts.json (sourcetype=wazuh)
+# Description: Computes high-level SOC operational KPIs: total alert count,
+#              distinct active agents, unique detection rules fired, and volume
+#              of high/critical alerts (rule.level >= 10).
+# ==============================================================================
+
+index=wazuh earliest=-7d
+| stats 
+    count as total_wazuh_alerts
+    dc(agent.id) as active_agents
+    dc(rule.id) as distinct_rules_fired
+    count(eval('rule.level' >= 10)) as high_severity_alerts
+    count(eval('rule.level' >= 4 AND 'rule.level' < 10)) as medium_severity_alerts
+    count(eval('rule.level' < 4)) as low_severity_alerts
+| eval high_sev_percentage = round((high_severity_alerts / total_wazuh_alerts) * 100, 2)
+| table total_wazuh_alerts active_agents distinct_rules_fired high_severity_alerts high_sev_percentage

@@ -1,0 +1,24 @@
+# ==============================================================================
+# Query 08: High-Severity Wazuh Alerts Triage Queue (Level >= 10)
+# Project: P10 — Wazuh + Splunk SIEM Integration
+# Target Index: index=wazuh
+# Data Source: /var/ossec/logs/alerts/alerts.json (sourcetype=wazuh)
+# Description: Triage stream for all alerts with rule.level >= 10 (High & Critical),
+#              displaying timestamp, agent, rule ID, description, source IP,
+#              target account, and ATT&CK technique IDs for immediate triage.
+# ==============================================================================
+
+index=wazuh earliest=-7d 'rule.level' >= 10
+| eval severity_rating = case(
+    'rule.level' >= 14, "CRITICAL (L14-15)",
+    'rule.level' >= 12, "VERY HIGH (L12-13)",
+    'rule.level' >= 10, "HIGH (L10-11)",
+    true(), "OTHER"
+)
+| eval endpoint = coalesce('agent.name', 'data.win.system.computer', host)
+| eval src_ip = coalesce('data.win.eventdata.ipAddress', 'data.srcip', src_ip, "N/A")
+| eval user = coalesce('data.win.eventdata.targetUserName', 'data.srcuser', 'data.dstuser', user, "N/A")
+| eval mitre = coalesce('rule.mitre.id{}', "None")
+| sort - _time
+| head 50
+| table _time severity_rating 'rule.level' 'rule.id' 'rule.description' endpoint src_ip user mitre

@@ -1,0 +1,29 @@
+# ==============================================================================
+# Query 05: Wazuh Failed Logins & Brute-Force Triage
+# Project: P10 — Wazuh + Splunk SIEM Integration
+# Target Index: index=wazuh
+# Data Source: /var/ossec/logs/alerts/alerts.json (sourcetype=wazuh)
+# Description: Triage query for all failed authentication alerts reported by
+#              Wazuh, grouping by target account, attacking source IP, endpoint,
+#              and logon status code (e.g. 0xc000006a bad password).
+# ==============================================================================
+
+index=wazuh earliest=-7d ('rule.groups{}'="authentication_failed" OR 'rule.id'="60122" OR 'rule.id'="5710" OR 'rule.id'="5716")
+| eval target_user = coalesce('data.win.eventdata.targetUserName', 'data.srcuser', 'data.dstuser', user, "Unknown")
+| eval source_ip = coalesce('data.win.eventdata.ipAddress', 'data.srcip', src_ip, "Local/Unknown")
+| eval workstation = coalesce('data.win.eventdata.workstationName', "N/A")
+| eval endpoint = coalesce('agent.name', 'data.win.system.computer', host)
+| eval error_status = coalesce('data.win.eventdata.subStatus', 'data.win.eventdata.status', "N/A")
+| stats 
+    count as failure_count
+    values('rule.description') as alert_reasons
+    values(endpoint) as targeted_endpoints
+    values(workstation) as client_hostnames
+    values(error_status) as error_codes
+    earliest(_time) as first_attempt
+    latest(_time) as last_attempt
+    by source_ip target_user
+| convert ctime(first_attempt) ctime(last_attempt)
+| sort - failure_count
+| head 25
+| table source_ip target_user failure_count targeted_endpoints client_hostnames error_codes alert_reasons first_attempt last_attempt

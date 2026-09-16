@@ -1,0 +1,26 @@
+# ==============================================================================
+# Query 06: Wazuh Monitored Agent Fleet Activity
+# Project: P10 — Wazuh + Splunk SIEM Integration
+# Target Index: index=wazuh
+# Data Source: /var/ossec/logs/alerts/alerts.json (sourcetype=wazuh)
+# Description: Summarizes telemetry volume and alert activity across all
+#              registered Wazuh agents, providing agent ID, hostname, IP,
+#              critical alert counts, and last seen timestamps.
+# ==============================================================================
+
+index=wazuh earliest=-7d
+| eval agent_id = coalesce('agent.id', "000")
+| eval agent_name = coalesce('agent.name', "wazuh-server (manager)")
+| eval agent_ip = coalesce('agent.ip', "127.0.0.1")
+| stats 
+    count as total_alerts_generated
+    count(eval('rule.level' >= 12)) as critical_alerts
+    count(eval('rule.level' >= 8 AND 'rule.level' < 12)) as high_alerts
+    count(eval('rule.level' < 8)) as info_medium_alerts
+    dc('rule.id') as distinct_rules_fired
+    earliest(_time) as first_alert
+    latest(_time) as last_alert
+    by agent_id agent_name agent_ip
+| convert ctime(first_alert) ctime(last_alert)
+| sort - total_alerts_generated
+| table agent_id agent_name agent_ip total_alerts_generated critical_alerts high_alerts info_medium_alerts distinct_rules_fired last_alert

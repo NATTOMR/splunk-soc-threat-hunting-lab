@@ -1,0 +1,20 @@
+# ==============================================================================
+# Query 02: Wazuh Alert Severity Distribution
+# Project: P10 — Wazuh + Splunk SIEM Integration
+# Target Index: index=wazuh
+# Data Source: /var/ossec/logs/alerts/alerts.json (sourcetype=wazuh)
+# Description: Groups Wazuh alerts by rule.level (0-15) and maps them into
+#              enterprise SOC severity tiers (Critical, High, Medium, Low)
+#              for executive and operational pie/bar chart visualization.
+# ==============================================================================
+
+index=wazuh earliest=-7d
+| eval severity_tier = case(
+    'rule.level' >= 12, "Critical (Level 12-15)",
+    'rule.level' >= 8 AND 'rule.level' < 12, "High (Level 8-11)",
+    'rule.level' >= 5 AND 'rule.level' < 8, "Medium (Level 5-7)",
+    'rule.level' < 5, "Low (Level 0-4)"
+)
+| stats count as alert_count by 'rule.level' severity_tier
+| sort - 'rule.level'
+| table 'rule.level' severity_tier alert_count

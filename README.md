@@ -397,6 +397,66 @@ Extracts: source IP, targeted username, destination host, failure count, and fir
 
 ---
 
+## P10 — Wazuh + Splunk SIEM Integration
+
+Project P10 implements centralized telemetry ingestion, correlation, and SOC dashboard visualization bridging the **Wazuh EDR/XDR** platform with **Splunk Enterprise 10.4.3**.
+
+Full P10 Documentation: [`p10/README.md`](p10/README.md)  
+Integration Architecture: [`p10/architecture/integration-architecture.md`](p10/architecture/integration-architecture.md)  
+Configuration Examples: [`p10/configs/configuration-examples.md`](p10/configs/configuration-examples.md)  
+SOC Dashboard XML: [`p10/dashboards/wazuh_splunk_dashboard.xml`](p10/dashboards/wazuh_splunk_dashboard.xml)  
+Investigation Scenario: [`p10/investigation/investigation-workflow.md`](p10/investigation/investigation-workflow.md)
+
+### P10 — Lab Roles & Architecture
+
+| Role | Host | IP Address | Active Services / Components |
+|---|---|---|---|
+| **Central SIEM & XDR** | `wazuh-server` | `192.168.100.7` | Wazuh Manager, Wazuh Indexer, Wazuh Dashboard, Splunk Enterprise 10.4.3 |
+| **Monitored Windows Host** | `win11-tgt` | `192.168.100.8` | Wazuh Windows Agent (`WazuhSvc` ID 003), Sysmon64, Splunk Universal Forwarder |
+| **Monitored Linux Host** | `ubuntu-p3` | `192.168.100.9` | Splunk Universal Forwarder, OpenSSH Server |
+| **Attack Simulation Host** | `kali` | `192.168.100.6` | Kali Linux (Reconnaissance, Nmap, Credential Spraying) |
+
+### P10 — Ingestion Pipeline & Telemetry
+- **Transport Mechanism:** Direct Local File Ingestion of `/var/ossec/logs/alerts/alerts.json` on `wazuh-server`.
+- **Target Index:** `index=wazuh`
+- **Sourcetype:** `wazuh` (Structured JSON extractions)
+- **Extracted Fields:** `rule.id`, `rule.level` (0–15), `rule.description`, `rule.groups{}`, `rule.mitre.id{}`, `rule.mitre.tactic{}`, `agent.id`, `agent.name`, `agent.ip`, `data.win.eventdata.ipAddress`, `data.win.eventdata.targetUserName`.
+
+### P10 — Key SPL Queries
+
+**1. High-Severity Wazuh Alerts Triage (Level >= 10):**
+```spl
+index=wazuh earliest=-7d 'rule.level'>=10
+| eval src = coalesce('data.win.eventdata.ipAddress', 'data.srcip', src_ip, "N/A")
+| eval user = coalesce('data.win.eventdata.targetUserName', 'data.srcuser', user, "N/A")
+| table _time 'rule.id' 'rule.level' 'rule.description' 'agent.name' src user
+```
+
+**2. Cross-Index Correlation (Wazuh + Windows + Sysmon):**
+```spl
+(index=wazuh 'rule.id'="60122") OR (index=windows EventCode=4625) OR (index=sysmon EventID=3)
+| eval telemetry_source = case(
+    index="wazuh", "Wazuh Alert (" + 'rule.id' + ")",
+    index="windows", "Windows Security EID " + EventCode,
+    index="sysmon", "Sysmon EID 3 Network",
+    true(), index
+)
+| table _time telemetry_source host src_ip user_account 'rule.description'
+```
+
+### P10 — Completed Deliverables
+
+| Deliverable | Path | Status |
+|---|---|:---:|
+| Integration Architecture | [`p10/architecture/integration-architecture.md`](p10/architecture/integration-architecture.md) | ✅ Complete |
+| Configuration Templates | [`p10/configs/configuration-examples.md`](p10/configs/configuration-examples.md) | ✅ Complete |
+| 8 Modular SPL Queries | [`p10/queries/`](p10/queries/) | ✅ Complete |
+| 10-Panel Simple XML Dashboard | [`p10/dashboards/wazuh_splunk_dashboard.xml`](p10/dashboards/wazuh_splunk_dashboard.xml) | ✅ Complete |
+| Investigation Workflow | [`p10/investigation/investigation-workflow.md`](p10/investigation/investigation-workflow.md) | ✅ Complete |
+| Screenshots Catalog | [`p10/screenshots/README.md`](p10/screenshots/README.md) | ✅ Complete |
+
+---
+
 ## Validation
 
 Full validation commands documented in [`docs/validation.md`](P2-Windows-Security-Monitoring/docs/validation.md).
@@ -506,12 +566,21 @@ splunk-soc-threat-hunting-lab/
 ├── P8-MITRE-ATTCK-Threat-Hunting/
 │   └── README.md                               # P8 project detail and status
 │
-└── p9/
-    ├── README.md                               # P9 Splunk SOC Dashboard
-    ├── dashboards/                             # Production Simple XML dashboard & guide
-    ├── queries/                                # 14 Modular SPL threat-hunting queries
-    ├── docs/                                   # Dashboard design & analytical spec
-    └── screenshots/                            # Dashboard panels catalog
+├── p9/
+│   ├── README.md                               # P9 Splunk SOC Dashboard
+│   ├── dashboards/                             # Production Simple XML dashboard & guide
+│   ├── queries/                                # 14 Modular SPL threat-hunting queries
+│   ├── docs/                                   # Dashboard design & analytical spec
+│   └── screenshots/                            # Dashboard panels catalog
+│
+└── p10/
+    ├── README.md                               # P10 Wazuh + Splunk SIEM Integration
+    ├── architecture/                           # Integration architecture & transport specification
+    ├── configs/                                # Sanitized Splunk and Wazuh configuration examples
+    ├── queries/                                # 8 Modular SPL queries for Wazuh telemetry
+    ├── dashboards/                             # Simple XML dashboard & deployment manual
+    ├── investigation/                          # SOC investigation workflow & scenario
+    └── screenshots/                            # Screenshot catalog & capture guidelines
 ```
 
 ---
@@ -549,10 +618,11 @@ splunk-soc-threat-hunting-lab/
 | **Phishing email investigation** | Email gateway telemetry, weaponized attachment triage, and whaling detection — [Project P7](P7-Phishing-Email-Investigation/README.md) (**Complete**) |
 | **MITRE ATT&CK threat hunting** | Hypothesis-driven hunting across ATT&CK tactics — [Project P8](P8-MITRE-ATTCK-Threat-Hunting/README.md) (**Complete**) |
 | **Unified SOC Dashboard** | Centralized multi-telemetry visualization & executive metrics — [Project P9](p9/README.md) (**Complete**) |
+| **Wazuh + Splunk integration** | Unified HIDS/SIEM correlation pipeline — [Project P10](p10/README.md) (**Complete**) |
 | **Automated adversary emulation** | Atomic Red Team execution for detection validation |
 | **Sigma rule conversion** | Translate community Sigma rules to Splunk SPL |
 | **Threat intelligence enrichment** | VirusTotal / AbuseIPDB integration via Splunk lookups |
-| **Wazuh + Splunk integration** | Unified HIDS/SIEM correlation pipeline — Project P10 |
+| **Active Response automation** | Webhook integration between Splunk alerts and Wazuh REST API |
 
 ---
 
@@ -569,7 +639,7 @@ splunk-soc-threat-hunting-lab/
 | **P7** | [**Phishing Email Investigation with Splunk**](P7-Phishing-Email-Investigation/README.md) | ✅ Complete |
 | **P8** | [**MITRE ATT&CK Threat Hunting with Splunk**](P8-MITRE-ATTCK-Threat-Hunting/README.md) | ✅ Complete |
 | **P9** | [**Splunk SOC Dashboard**](p9/README.md) | ✅ Complete |
-| **P10** | Wazuh + Splunk SIEM Integration | ⚪ Planned |
+| **P10** | [**Wazuh + Splunk SIEM Integration**](p10/README.md) | ✅ Complete |
 
 ---
 

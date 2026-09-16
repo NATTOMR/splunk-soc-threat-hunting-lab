@@ -1,0 +1,23 @@
+# ==============================================================================
+# Query 07: Wazuh MITRE ATT&CK Framework Mapping
+# Project: P10 — Wazuh + Splunk SIEM Integration
+# Target Index: index=wazuh
+# Data Source: /var/ossec/logs/alerts/alerts.json (sourcetype=wazuh)
+# Description: Evaluates alerts enriched with MITRE ATT&CK metadata, extracting
+#              technique IDs, tactic categories, associated rule descriptions,
+#              and affected agents for adversarial mapping and gap analysis.
+# ==============================================================================
+
+index=wazuh earliest=-7d isnotnull('rule.mitre.id{}')
+| mvexpand 'rule.mitre.id{}'
+| eval mitre_technique = 'rule.mitre.id{}'
+| eval mitre_tactic = coalesce('rule.mitre.tactic{}', "Unassigned Tactic")
+| stats 
+    count as technique_count
+    values('rule.description') as sample_rule_descriptions
+    values('rule.level') as severity_levels
+    values(agent.name) as target_endpoints
+    dc(agent.name) as distinct_endpoints_impacted
+    by mitre_technique mitre_tactic
+| sort - technique_count
+| table mitre_technique mitre_tactic technique_count distinct_endpoints_impacted target_endpoints sample_rule_descriptions

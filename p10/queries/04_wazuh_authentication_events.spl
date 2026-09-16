@@ -1,0 +1,20 @@
+# ==============================================================================
+# Query 04: Wazuh Monitored Authentication Events (Windows & Linux)
+# Project: P10 — Wazuh + Splunk SIEM Integration
+# Target Index: index=wazuh
+# Data Source: /var/ossec/logs/alerts/alerts.json (sourcetype=wazuh)
+# Description: Correlates host authentication events captured by Wazuh across
+#              both Windows and Linux agents, categorizing them into Success
+#              and Failure states and extracting user/IP telemetry.
+# ==============================================================================
+
+index=wazuh earliest=-7d ('rule.groups{}'="authentication*" OR 'rule.groups{}'="sshd" OR 'rule.id'="60106" OR 'rule.id'="60122" OR 'rule.id'="5715" OR 'rule.id'="5710")
+| eval auth_status = case(
+    'rule.groups{}'="authentication_failed" OR 'rule.id'="60122" OR 'rule.id'="5710" OR 'rule.id'="5716", "FAILED",
+    'rule.groups{}'="authentication_success" OR 'rule.id'="60106" OR 'rule.id'="5715", "SUCCESS",
+    true(), "OTHER"
+)
+| eval target_user = coalesce('data.win.eventdata.targetUserName', 'data.srcuser', 'data.dstuser', user, "Unknown")
+| eval source_ip = coalesce('data.win.eventdata.ipAddress', 'data.srcip', src_ip, "Local/Unknown")
+| eval endpoint = coalesce('agent.name', 'data.win.system.computer', host)
+| timechart span=1h count by auth_status

@@ -1,0 +1,321 @@
+<dashboard version="1.1" theme="dark">
+  <label>P10 - Wazuh + Splunk SIEM Integration Dashboard</label>
+  <description>Unified Endpoint Detection &amp; Response (EDR/XDR) Telemetry Pipeline: Real-time correlation and visualization of Wazuh Manager alerts, rule firings, agent activity, and MITRE ATT&amp;CK mappings within Splunk Enterprise.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="time_tok" searchWhenChanged="true">
+      <label>Global Time Range</label>
+      <default>
+        <earliest>-7d@d</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="agent_tok" searchWhenChanged="true">
+      <label>Wazuh Agent</label>
+      <choice value="*">All Agents</choice>
+      <default>*</default>
+      <fieldForLabel>agent_label</fieldForLabel>
+      <fieldForValue>agent_val</fieldForValue>
+      <search>
+        <query>index=wazuh earliest=-7d | eval agent_val=coalesce('agent.name', host), agent_label=coalesce('agent.name', host) + " (" + coalesce('agent.id', "000") + ")" | stats count by agent_val agent_label | table agent_label agent_val</query>
+        <earliest>-7d@d</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+
+  <!-- ROW 1: Executive KPI Metrics (Panels 1, 2, 5) -->
+  <row>
+    <panel>
+      <title>Total Wazuh Alerts Ingested</title>
+      <single>
+        <search>
+          <query>index=wazuh agent.name="$agent_tok$" | stats count</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="underLabel">Wazuh JSON Records</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>High &amp; Critical Alerts (Level &gt;= 10)</title>
+      <single>
+        <search>
+          <query>index=wazuh agent.name="$agent_tok$" 'rule.level'&gt;=10 | stats count</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[0,10]</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="underLabel">Actionable Incidents</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Distinct Detection Rules Fired</title>
+      <single>
+        <search>
+          <query>index=wazuh agent.name="$agent_tok$" | stats dc(rule.id)</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051","0x684e9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="showSparkline">1</option>
+        <option name="underLabel">Active Wazuh Rule IDs</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Active Monitored Agents</title>
+      <single>
+        <search>
+          <query>index=wazuh | stats dc(agent.id)</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="showSparkline">1</option>
+        <option name="underLabel">Endpoints Reporting</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- ROW 2: Severity Distribution & Alert Velocity (Panels 2 & 3) -->
+  <row>
+    <panel>
+      <title>Alerts by Severity Tier (Panel 2)</title>
+      <chart>
+        <search>
+          <query>index=wazuh agent.name="$agent_tok$" 
+| eval severity_tier = case(
+    'rule.level' &gt;= 12, "Critical (L12-15)",
+    'rule.level' &gt;= 8 AND 'rule.level' &lt; 12, "High (L8-11)",
+    'rule.level' &gt;= 5 AND 'rule.level' &lt; 8, "Medium (L5-7)",
+    'rule.level' &lt; 5, "Low (L0-4)"
+)
+| stats count by severity_tier</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.fieldColors">{"Critical (L12-15)":0xdc4e41,"High (L8-11)":0xf1813f,"Medium (L5-7)":0xf8be34,"Low (L0-4)":0x006d9c}</option>
+        <option name="charting.legend.placement">right</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Alert Velocity Over Time by Severity Tier (Panel 3)</title>
+      <chart>
+        <search>
+          <query>index=wazuh agent.name="$agent_tok$"
+| eval severity_tier = case(
+    'rule.level' &gt;= 12, "Critical",
+    'rule.level' &gt;= 8 AND 'rule.level' &lt; 12, "High",
+    'rule.level' &gt;= 5 AND 'rule.level' &lt; 8, "Medium",
+    'rule.level' &lt; 5, "Low"
+)
+| timechart span=1h count by severity_tier</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.fieldColors">{"Critical":0xdc4e41,"High":0xf1813f,"Medium":0xf8be34,"Low":0x006d9c}</option>
+        <option name="charting.legend.placement">top</option>
+      </chart>
+    </panel>
+  </row>
+
+  <!-- ROW 3: Top Rules & Agent Fleet Activity (Panels 4 & 5) -->
+  <row>
+    <panel>
+      <title>Top Firing Wazuh Detection Rules (Panel 4)</title>
+      <chart>
+        <search>
+          <query>index=wazuh agent.name="$agent_tok$"
+| eval rule_label = 'rule.id' + " - " + substr('rule.description', 1, 40)
+| top limit=10 rule_label</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="charting.axisTitleX.text">Firing Frequency</option>
+        <option name="charting.axisTitleY.text">Wazuh Rule</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Agent Fleet Telemetry Distribution (Panel 5)</title>
+      <table>
+        <search>
+          <query>index=wazuh
+| eval agent_name = coalesce('agent.name', "wazuh-server")
+| eval agent_id = coalesce('agent.id', "000")
+| eval agent_ip = coalesce('agent.ip', "127.0.0.1")
+| stats 
+    count as total_events
+    count(eval('rule.level'&gt;=10)) as high_crit_alerts
+    dc('rule.id') as unique_rules
+    latest(_time) as last_seen
+    by agent_id agent_name agent_ip
+| convert ctime(last_seen)
+| sort - total_events</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+  </row>
+
+  <!-- ROW 4: Authentication Activity & MITRE ATT&CK (Panels 6 & 8) -->
+  <row>
+    <panel>
+      <title>Authentication Activity &amp; Logon Failures (Panel 6)</title>
+      <chart>
+        <search>
+          <query>index=wazuh agent.name="$agent_tok$" ('rule.groups{}'="authentication*" OR 'rule.id'="60106" OR 'rule.id'="60122" OR 'rule.id'="5710" OR 'rule.id'="5715")
+| eval auth_result = case(
+    'rule.groups{}'="authentication_failed" OR 'rule.id'="60122" OR 'rule.id'="5710", "FAILED_AUTH",
+    'rule.groups{}'="authentication_success" OR 'rule.id'="60106" OR 'rule.id'="5715", "SUCCESSFUL_AUTH",
+    true(), "OTHER_AUTH"
+)
+| timechart span=1h count by auth_result</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.fieldColors">{"FAILED_AUTH":0xdc4e41,"SUCCESSFUL_AUTH":0x53a051,"OTHER_AUTH":0x708090}</option>
+        <option name="charting.legend.placement">top</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Observed MITRE ATT&amp;CK Techniques (Panel 8)</title>
+      <table>
+        <search>
+          <query>index=wazuh agent.name="$agent_tok$" isnotnull('rule.mitre.id{}')
+| mvexpand 'rule.mitre.id{}'
+| eval mitre_tech = 'rule.mitre.id{}'
+| eval mitre_tactic = coalesce('rule.mitre.tactic{}', "Unassigned")
+| stats 
+    count as event_count
+    values('rule.description') as associated_rules
+    values(agent.name) as target_agents
+    by mitre_tech mitre_tactic
+| sort - event_count</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+  </row>
+
+  <!-- ROW 5: High-Severity Alerts Queue (Panel 7) -->
+  <row>
+    <panel>
+      <title>High-Severity Alert Triage Queue - Level &gt;= 10 (Panel 7)</title>
+      <table>
+        <search>
+          <query>index=wazuh agent.name="$agent_tok$" 'rule.level'&gt;=10
+| eval severity = case('rule.level'&gt;=14, "CRITICAL", 'rule.level'&gt;=12, "VERY HIGH", true(), "HIGH")
+| eval src = coalesce('data.win.eventdata.ipAddress', 'data.srcip', src_ip, "N/A")
+| eval target_user = coalesce('data.win.eventdata.targetUserName', 'data.srcuser', 'data.dstuser', user, "N/A")
+| eval endpoint = coalesce('agent.name', 'data.win.system.computer', host)
+| eval mitre_id = coalesce('rule.mitre.id{}', "None")
+| sort - _time
+| head 25
+| table _time severity 'rule.level' 'rule.id' 'rule.description' endpoint src target_user mitre_id</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+  </row>
+
+  <!-- ROW 6: Recent Alerts & Unified Investigation Timeline (Panels 9 & 10) -->
+  <row>
+    <panel>
+      <title>Recent Wazuh Ingested Alerts Stream (Panel 9)</title>
+      <table>
+        <search>
+          <query>index=wazuh agent.name="$agent_tok$"
+| eval src = coalesce('data.win.eventdata.ipAddress', 'data.srcip', src_ip, "N/A")
+| eval user = coalesce('data.win.eventdata.targetUserName', 'data.srcuser', user, "N/A")
+| sort - _time
+| head 20
+| table _time 'agent.name' 'rule.level' 'rule.id' 'rule.description' src user</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+    <panel>
+      <title>Investigation Timeline - Cross-Index Incident Correlation (Panel 10)</title>
+      <table>
+        <search>
+          <query>(index=wazuh agent.name="$agent_tok$") OR (index=windows EventCode=4625) OR (index=sysmon EventID=3)
+| eval telemetry_source = case(
+    index="wazuh", "Wazuh Alert (" + 'rule.id' + ")",
+    index="windows", "Windows Security EID " + EventCode,
+    index="sysmon", "Sysmon EID 3 Network",
+    true(), index
+)
+| eval event_summary = coalesce('rule.description', Message, CommandLine, "Security Event")
+| eval src_ip = coalesce('data.win.eventdata.ipAddress', SourceIp, 'data.srcip', src_ip, "N/A")
+| eval user_account = coalesce('data.win.eventdata.targetUserName', TargetUserName, user, "N/A")
+| sort - _time
+| head 30
+| table _time telemetry_source event_summary src_ip user_account host</query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

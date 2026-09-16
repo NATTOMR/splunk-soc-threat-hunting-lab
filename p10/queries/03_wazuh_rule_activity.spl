@@ -1,0 +1,24 @@
+# ==============================================================================
+# Query 03: Top Wazuh Detection Rules Triggered
+# Project: P10 — Wazuh + Splunk SIEM Integration
+# Target Index: index=wazuh
+# Data Source: /var/ossec/logs/alerts/alerts.json (sourcetype=wazuh)
+# Description: Identifies the most frequently firing Wazuh detection rules,
+#              extracting rule ID, alert severity level, description, and
+#              associated MITRE ATT&CK tactic/technique metadata.
+# ==============================================================================
+
+index=wazuh earliest=-7d
+| stats 
+    count as fire_count
+    values('rule.level') as severity_level
+    values('rule.description') as description
+    values('rule.mitre.id{}') as mitre_techniques
+    dc(agent.name) as affected_endpoints
+    earliest(_time) as first_seen
+    latest(_time) as last_seen
+    by 'rule.id'
+| convert ctime(first_seen) ctime(last_seen)
+| sort - fire_count
+| head 20
+| table 'rule.id' severity_level description fire_count affected_endpoints mitre_techniques first_seen last_seen
