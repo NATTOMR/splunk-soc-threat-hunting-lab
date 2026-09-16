@@ -1,0 +1,49 @@
+# ==============================================================================
+# SPL Query: 01_soc_event_summary.spl
+# Project: P9 — Splunk SOC Dashboard
+# Purpose: High-level KPI metric aggregation across all lab telemetry streams:
+#          - Total Security Events
+#          - Total Authentication Events (Windows & Linux)
+#          - Threat Detection Events (Flagged suspicious/malicious activity)
+#          - Network Connection Events (Sysmon EID 3)
+#          - Web Layer Events (Apache2 access_combined)
+#          - High / Critical Severity Incident Candidates
+# Author: Natto Chakma
+# Telemetry: index=windows, index=sysmon, index=linux_security, index=web, index=email
+# ==============================================================================
+
+(index=windows) OR (index=sysmon) OR (index=linux_security) OR (index=web) OR (index=email) earliest=-7d
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| rex field=_raw "<Data Name='CommandLine'>(?<CommandLine>[^<]*)</Data>"
+| eval category=case(
+    index="web", "Web Events",
+    index="email", "Email Events",
+    index="windows" AND EventCode IN (4624, 4625, 4672), "Authentication Events",
+    index="linux_security" AND match(_raw, "(?i)(Failed password|Accepted|sshd|sudo)"), "Authentication Events",
+    index="sysmon" AND EventID=3, "Network Events",
+    index="sysmon" AND EventID IN (1, 11, 12, 13, 22), "Endpoint Events",
+    true(), "General Security Events"
+  )
+| eval is_threat=case(
+    EventCode=4625 OR match(_raw, "(?i)Failed password"), 1,
+    index="web" AND (status>=400 OR match(_raw, "(?i)(union\s+select|<script|\.\./|nikto|sqlmap)")), 1,
+    index="sysmon" AND (match(CommandLine, "(?i)(certutil|bitsadmin|mshta|-enc|bypass|psexec|whoami|schtasks)") OR EventID=22), 1,
+    index="windows" AND EventCode IN (4728, 4732, 7045), 1,
+    index="linux_security" AND match(_raw, "(?i)(NOT in sudoers|authentication failure)"), 1,
+    index="email" AND match(_raw, "(?i)(urgent|password|wire transfer|\.xlsm|\.iso|\.exe)"), 1,
+    true(), 0
+  )
+| eval is_critical_high=case(
+    Logon_Type="9", 1,
+    match(CommandLine, "(?i)(-(enc|encodedcommand)\s+|mshta.*http|psexesvc)"), 1,
+    match(_raw, "(?i)(union\s+select.*from|<script>.*alert|\.iso|\.pdf\.exe)"), 1,
+    EventCode IN (4728, 4732), 1,
+    true(), 0
+  )
+| stats 
+    count as total_events,
+    count(eval(category="Authentication Events")) as total_auth_events,
+    count(eval(category="Network Events")) as total_network_events,
+    count(eval(category="Web Events")) as total_web_events,
+    count(eval(is_threat=1)) as total_detections,
+    count(eval(is_critical_high=1)) as critical_high_severity

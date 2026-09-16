@@ -1,0 +1,59 @@
+# ==============================================================================
+# SPL Query: 12_detection_summary.spl
+# Project: P9 — Splunk SOC Dashboard
+# Purpose: Master threat detection catalog synthesizing detections across all lab
+#          domains (P1–P8). Correlates detection name, attack domain, severity,
+#          and MITRE ATT&CK technique IDs with aggregate detection frequency.
+# Author: Natto Chakma
+# Framework: MITRE ATT&CK Enterprise Matrix v15
+# Telemetry: index=windows, index=sysmon, index=linux_security, index=web, index=email
+# ==============================================================================
+
+(index=windows) OR (index=sysmon) OR (index=linux_security) OR (index=web) OR (index=email) earliest=-7d
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| rex field=_raw "<Data Name='CommandLine'>(?<CommandLine>[^<]*)</Data>"
+| rex field=_raw "<Data Name='Image'>(?<Image>[^<]+)</Data>"
+| eval detection_rule=case(
+    # Web Detections
+    match(uri_query, "(?i)(union(\s+|\/\*.*\*\/)+select|information_schema)"), "DET-P6-01: SQL Injection Exploitation (T1190)",
+    match(uri_query, "(?i)(<script|javascript:|alert\()"), "DET-P6-02: Cross-Site Scripting Injection (T1190)",
+    match(uri_path, "(?i)(\.\./|/etc/passwd)"), "DET-P6-03: Directory Path Traversal (T1083 / T1190)",
+    match(useragent, "(?i)(nikto|sqlmap|dirbuster)"), "DET-P6-04: Automated Web Scanner Tool (T1595.002)",
+    
+    # Endpoint / Threat Hunting Detections
+    match(CommandLine, "(?i)powershell.*(-(e|en|enc|encodedcommand)\s+|downloadstring|iex\b)"), "DET-P8-01: Obfuscated PowerShell Dropper (T1059.001 / T1027)",
+    match(CommandLine, "(?i)(certutil.*-urlcache|bitsadmin.*(/transfer|/create))"), "DET-P8-02: Living-off-the-Land Ingress Transfer (T1105 / T1218)",
+    match(CommandLine, "(?i)schtasks.*create") OR (EventID IN (12,13) AND match(_raw, "(?i)\\\\Run\\\\")), "DET-P8-03: Endpoint Autostart Persistence (T1547.001 / T1053.005)",
+    EventID=22 AND match(_raw, "(?i)(duckdns\.org|ngrok\.io|no-ip)"), "DET-P8-04: Dynamic DNS / C2 Beaconing Query (T1071.004)",
+    
+    # Authentication & Brute Force Detections
+    EventCode=4625, "DET-P4-01: Windows Authentication Failure (T1110)",
+    match(_raw, "(?i)Failed password"), "DET-P4-02: Linux SSH Authentication Failure (T1110)",
+    Logon_Type="9", "DET-P8-05: Potential Pass-The-Hash / NewCredentials (T1550.002)",
+    EventCode IN (4728, 4732), "DET-P8-06: Administrative Group Manipulation (T1098)",
+    match(_raw, "(?i)NOT in sudoers"), "DET-P3-01: Unauthorized Sudo Escalation Violation (T1548.003)",
+    
+    # Network Detections
+    EventID=3 AND match(_raw, "(?i)DestinationPort'>(4444|1337|31337)<"), "DET-P5-01: Backdoor / Non-Standard Port Egress (T1571)",
+    
+    # Email Detections
+    index="email" AND match(_raw, "(?i)(whaling|ceo|wire transfer|\.xlsm|\.iso)"), "DET-P7-01: Weaponized Email / Phishing Campaign (T1566)",
+    true(), "NO_MATCH"
+  )
+| search detection_rule!="NO_MATCH"
+| rex field=detection_rule "^(?<detection_id>[^:]+):\s+(?<detection_name>.*?)\s+\((?<mitre_technique>[^\)]+)\)$"
+| eval severity=case(
+    match(detection_rule, "(?i)(SQL Injection|Pass-The-Hash|Obfuscated PowerShell|Group Manipulation|Backdoor)"), "CRITICAL",
+    match(detection_rule, "(?i)(Cross-Site Scripting|Path Traversal|Living-off-the-Land|Autostart|Weaponized)"), "HIGH",
+    match(detection_rule, "(?i)(Scanner|Authentication Failure|Sudo|Dynamic DNS)"), "MEDIUM",
+    true(), "LOW"
+  )
+| stats 
+    count as detection_count,
+    dc(host) as affected_hosts,
+    values(mitre_technique) as mitre_techniques,
+    earliest(_time) as first_triggered,
+    latest(_time) as last_triggered
+    by detection_id, detection_name, severity
+| eval first_triggered=strftime(first_triggered, "%Y-%m-%d %H:%M:%S"), last_triggered=strftime(last_triggered, "%Y-%m-%d %H:%M:%S")
+| sort - detection_count

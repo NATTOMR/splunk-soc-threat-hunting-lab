@@ -1,0 +1,40 @@
+# ==============================================================================
+# SPL Query: 13_alert_severity.spl
+# Project: P9 — Splunk SOC Dashboard
+# Purpose: Classifies security events into standardized SOC severity tiers 
+#          (Critical, High, Medium, Low, Informational) to visualize risk posture,
+#          inform triage queuing, and display alert distribution charts.
+# Author: Natto Chakma
+# Telemetry: index=windows, index=sysmon, index=linux_security, index=web, index=email
+# ==============================================================================
+
+(index=windows) OR (index=sysmon) OR (index=linux_security) OR (index=web) OR (index=email) earliest=-7d
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| rex field=_raw "<Data Name='CommandLine'>(?<CommandLine>[^<]*)</Data>"
+| eval alert_severity=case(
+    # CRITICAL
+    match(uri_query, "(?i)(union(\s+|\/\*.*\*\/)+select)") OR match(CommandLine, "(?i)-(e|enc|encodedcommand)\s+[A-Za-z0-9+/=]{20,}") OR Logon_Type="9" OR EventCode IN (4728, 4732), "CRITICAL",
+    
+    # HIGH
+    match(uri_query, "(?i)(<script|\.\./|/etc/passwd)") OR match(CommandLine, "(?i)(certutil.*-urlcache|bitsadmin.*(/transfer|/create)|schtasks.*create)") OR (EventID IN (12,13) AND match(_raw, "(?i)\\\\Run\\\\")) OR (EventID=3 AND match(_raw, "(?i)DestinationPort'>(4444|1337)<")), "HIGH",
+    
+    # MEDIUM
+    EventCode=4625 OR match(_raw, "(?i)Failed password") OR match(useragent, "(?i)(nikto|sqlmap|nmap)") OR (EventID=22 AND match(_raw, "(?i)duckdns\.org")) OR match(_raw, "(?i)NOT in sudoers"), "MEDIUM",
+    
+    # LOW
+    EventCode=4624 OR match(_raw, "(?i)Accepted") OR (index="web" AND status<400), "LOW / INFORMATIONAL",
+    true(), "NO_ALERT"
+  )
+| search alert_severity!="NO_ALERT"
+| stats count by alert_severity
+| eventstats sum(count) as total_alerts
+| eval percentage=round((count/total_alerts)*100, 2) . "%"
+| eval sort_order=case(
+    alert_severity="CRITICAL", 1,
+    alert_severity="HIGH", 2,
+    alert_severity="MEDIUM", 3,
+    alert_severity="LOW / INFORMATIONAL", 4,
+    true(), 5
+  )
+| sort sort_order
+| fields - sort_order

@@ -1,0 +1,44 @@
+# ==============================================================================
+# SPL Query: 10_network_threats.spl
+# Project: P9 — Splunk SOC Dashboard
+# Purpose: Network threat detection and connection volume analysis from Sysmon EID 3.
+#          Identifies vertical port scanning, high-volume connection velocity bursts,
+#          and communication over uncommon / known backdoor ports (4444, 1337, etc.).
+# Author: Natto Chakma
+# MITRE ATT&CK: T1046 (Network Service Discovery), T1571 (Non-Standard Port), T1071 (C2)
+# Telemetry: index=sysmon (EventID 3)
+# ==============================================================================
+
+index=sysmon earliest=-7d
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| search EventID=3
+| rex field=_raw "<Data Name='Image'>(?<Image>[^<]+)</Data>"
+| rex field=_raw "<Data Name='SourceIp'>(?<SourceIp>[^<]+)</Data>"
+| rex field=_raw "<Data Name='DestinationIp'>(?<DestinationIp>[^<]+)</Data>"
+| rex field=_raw "<Data Name='DestinationPort'>(?<DestinationPort>[^<]+)</Data>"
+| rex field=_raw "<Data Name='Protocol'>(?<Protocol>[^<]+)</Data>"
+| eval is_uncommon_port=case(
+    DestinationPort IN ("4444", "5555", "6666", "7777", "8888", "1337", "31337"), "CRITICAL: Backdoor / C2 Port Connection (T1571)",
+    DestinationPort IN ("5985", "5986"), "HIGH: WinRM Management Traffic (T1021.006)",
+    DestinationPort="3389", "MEDIUM: Remote Desktop (RDP) Traffic (T1021.001)",
+    DestinationPort="445", "MEDIUM: Server Message Block (SMB) Traffic (T1021.002)",
+    true(), "STANDARD: Standard Service Port (" . DestinationPort . ")"
+  )
+| eval process_name=lower(replace(Image, ".*\\\\", ""))
+| stats 
+    count as connection_count,
+    dc(DestinationPort) as distinct_ports_contacted,
+    values(DestinationPort) as targeted_ports,
+    values(process_name) as initiating_processes,
+    earliest(_time) as first_contact,
+    latest(_time) as last_contact
+    by SourceIp, DestinationIp, is_uncommon_port
+| eval threat_classification=case(
+    distinct_ports_contacted>=10, "HIGH: Vertical Port Reconnaissance Scan (T1046)",
+    is_uncommon_port!="STANDARD: Standard Service Port (" . DestinationPort . ")", is_uncommon_port,
+    connection_count>=50, "MEDIUM: High-Velocity Connection Burst",
+    true(), "LOW: Routine Network Communication"
+  )
+| search threat_classification!="LOW: Routine Network Communication"
+| eval first_contact=strftime(first_contact, "%Y-%m-%d %H:%M:%S"), last_contact=strftime(last_contact, "%Y-%m-%d %H:%M:%S")
+| sort - connection_count

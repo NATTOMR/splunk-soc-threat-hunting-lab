@@ -1,0 +1,33 @@
+# ==============================================================================
+# SPL Query: 05_bruteforce_activity.spl
+# Project: P9 — Splunk SOC Dashboard
+# Purpose: Detects and correlates brute-force authentication attacks and password
+#          spraying across Windows (EventCode 4625) and Linux SSH streams.
+#          Flags velocity bursts (>= 5 failures within 5 minutes) and correlates
+#          source IPs with targeted user identities.
+# Author: Natto Chakma
+# MITRE ATT&CK: T1110.001 (Password Guessing), T1110.003 (Password Spraying)
+# Telemetry: index=windows (EventCode 4625), index=linux_security ("Failed password")
+# ==============================================================================
+
+(index=windows EventCode=4625 earliest=-7d) 
+OR (index=linux_security sourcetype=linux_secure "Failed password" earliest=-7d)
+| rex field=_raw "Failed password for (?:invalid user )?(?<linux_user>[^\s]+) from (?<linux_src_ip>\d+\.\d+\.\d+\.\d+)"
+| eval TargetUser=lower(coalesce(TargetUserName, linux_user, user, Account_Name))
+| eval SourceIP=coalesce(IpAddress, linux_src_ip, SourceNetworkAddress, src_ip)
+| search isnotnull(TargetUser) AND NOT TargetUser IN ("*$", "anonymous logon") AND isnotnull(SourceIP) AND NOT SourceIP IN ("127.0.0.1", "::1", "-")
+| bin _time span=5m
+| stats 
+    count as failure_burst_count,
+    dc(TargetUser) as distinct_users_targeted,
+    values(TargetUser) as targeted_accounts
+    by _time, SourceIP, host
+| eval attack_pattern=case(
+    distinct_users_targeted>=3, "HIGH: Horizontal Password Spraying (T1110.003)",
+    failure_burst_count>=10, "CRITICAL: High-Velocity Targeted Brute-Force (T1110.001)",
+    failure_burst_count>=5, "MEDIUM: Suspected Brute-Force Authentication Attempt (T1110)",
+    true(), "LOW: Incidental Authentication Failures"
+  )
+| search attack_pattern!="LOW: Incidental Authentication Failures"
+| eval _time=strftime(_time, "%Y-%m-%d %H:%M:%S")
+| sort - failure_burst_count

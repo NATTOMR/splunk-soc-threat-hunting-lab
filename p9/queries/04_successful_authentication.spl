@@ -1,0 +1,37 @@
+# ==============================================================================
+# SPL Query: 04_successful_authentication.spl
+# Project: P9 — Splunk SOC Dashboard
+# Purpose: Audits successful authentications across Windows (EventCode 4624) and 
+#          Linux (SSH Accepted). Identifies logon types (Console, Network SMB, 
+#          RDP, Pass-The-Hash) and flags privileged account activity.
+# Author: Natto Chakma
+# Telemetry: index=windows (EventCode 4624), index=linux_security ("Accepted")
+# ==============================================================================
+
+(index=windows EventCode=4624 earliest=-7d) 
+OR (index=linux_security sourcetype=linux_secure "Accepted" earliest=-7d)
+| rex field=_raw "Accepted (?<linux_auth_method>\w+) for (?<linux_user>[^\s]+) from (?<linux_src_ip>\d+\.\d+\.\d+\.\d+)"
+| eval TargetUser=coalesce(TargetUserName, linux_user, user, Account_Name)
+| eval SourceIP=coalesce(IpAddress, linux_src_ip, SourceNetworkAddress, src_ip)
+| eval LogonTypeDesc=case(
+    Logon_Type="2", "Interactive Console (Logon Type 2)",
+    Logon_Type="3", "Network Share / SMB (Logon Type 3)",
+    Logon_Type="4", "Batch / Scheduled Task (Logon Type 4)",
+    Logon_Type="5", "Service Startup (Logon Type 5)",
+    Logon_Type="9", "NewCredentials / PtH (Logon Type 9)",
+    Logon_Type="10", "Remote Desktop / RDP (Logon Type 10)",
+    index="linux_security", "Linux SSH (" . linux_auth_method . ")",
+    true(), "Other / System (" . Logon_Type . ")"
+  )
+| search isnotnull(TargetUser) AND NOT TargetUser IN ("*$", "SYSTEM", "LOCAL SERVICE", "NETWORK SERVICE")
+| eval is_privileged=if(match(TargetUser, "(?i)(admin|root|administrator|svc_.*)"), "Privileged Account", "Standard User")
+| stats 
+    count as success_count,
+    values(LogonTypeDesc) as logon_types,
+    values(SourceIP) as source_ips,
+    values(Workstation_Name) as workstations,
+    earliest(_time) as first_seen,
+    latest(_time) as last_seen
+    by TargetUser, is_privileged, host
+| eval first_seen=strftime(first_seen, "%Y-%m-%d %H:%M:%S"), last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")
+| sort - success_count

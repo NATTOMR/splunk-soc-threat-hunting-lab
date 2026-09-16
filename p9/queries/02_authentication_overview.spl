@@ -1,0 +1,24 @@
+# ==============================================================================
+# SPL Query: 02_authentication_overview.spl
+# Project: P9 — Splunk SOC Dashboard
+# Purpose: Unified authentication posture analysis across Windows and Linux endpoints.
+#          Aggregates successful vs failed authentications and visualizes the
+#          overall authentication health and ratio.
+# Author: Natto Chakma
+# Telemetry: index=windows (EventCode 4624, 4625), index=linux_security (sourcetype=linux_secure)
+# ==============================================================================
+
+(index=windows (EventCode=4624 OR EventCode=4625) earliest=-7d) 
+OR (index=linux_security sourcetype=linux_secure ("Failed password" OR "Accepted") earliest=-7d)
+| eval auth_status=case(
+    EventCode=4624, "Successful Authentication (Windows)",
+    EventCode=4625, "Failed Authentication (Windows)",
+    index="linux_security" AND match(_raw, "(?i)Accepted"), "Successful Authentication (Linux SSH)",
+    index="linux_security" AND match(_raw, "(?i)Failed password"), "Failed Authentication (Linux SSH)",
+    true(), "Other"
+  )
+| eval auth_result=if(match(auth_status, "(?i)Successful"), "Success", "Failure")
+| stats count by auth_status, auth_result
+| eventstats sum(count) as total_auth
+| eval percentage=round((count/total_auth)*100, 2) . "%"
+| sort - count

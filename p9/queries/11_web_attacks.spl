@@ -1,0 +1,33 @@
+# ==============================================================================
+# SPL Query: 11_web_attacks.spl
+# Project: P9 — Splunk SOC Dashboard
+# Purpose: Web security triage and OWASP Top 10 attack classification from Apache2
+#          access logs (index=web, sourcetype=access_combined). Categorizes SQLi,
+#          Cross-Site Scripting (XSS), Directory Traversal, and Automated Tool Scanners.
+# Author: Natto Chakma
+# MITRE ATT&CK: T1190 (Exploit Public-Facing Application), T1595.002 (Vulnerability Scanning)
+# Telemetry: index=web (sourcetype=access_combined)
+# ==============================================================================
+
+index=web sourcetype=access_combined earliest=-7d
+| eval attack_category=case(
+    match(uri_query, "(?i)(union(\s+|\/\*.*\*\/)+select|select\s+.*\s+from|insert\s+into|drop\s+table|--|information_schema)") OR match(uri_path, "(?i)(union(\s+|\/\*.*\*\/)+select)"), "CRITICAL: SQL Injection (SQLi) - T1190",
+    match(uri_query, "(?i)(<script|%3Cscript|javascript:|onload=|onerror=|alert\(|document\.cookie)") OR match(uri_path, "(?i)(<script|%3Cscript)"), "HIGH: Cross-Site Scripting (XSS) - T1190",
+    match(uri_path, "(?i)(\.\./|\.\.\\|%2e%2e|/etc/passwd|/windows/win\.ini|/boot\.ini)"), "HIGH: Directory / Path Traversal (T1083 / T1190)",
+    match(useragent, "(?i)(nikto|sqlmap|nmap|dirbuster|gobuster|wpscan|hydra|acunetix|masscan)"), "MEDIUM: Automated Security Scanner Tool (T1595.002)",
+    status>=500, "MEDIUM: Web Application Internal Error (5xx Spike)",
+    status=404 AND match(uri_path, "(?i)(\.php|\.bak|\.env|\.git|wp-admin|config)"), "MEDIUM: Web Directory Fuzzing / Probing",
+    true(), "BENIGN: Standard Web Request"
+  )
+| search attack_category!="BENIGN: Standard Web Request"
+| stats 
+    count as incident_count,
+    values(method) as http_methods,
+    values(status) as http_statuses,
+    values(useragent) as user_agents,
+    values(uri_path) as sample_paths,
+    earliest(_time) as first_attempt,
+    latest(_time) as last_attempt
+    by attack_category, clientip, host
+| eval first_attempt=strftime(first_attempt, "%Y-%m-%d %H:%M:%S"), last_attempt=strftime(last_attempt, "%Y-%m-%d %H:%M:%S")
+| sort - incident_count

@@ -1,0 +1,43 @@
+# ==============================================================================
+# SPL Query: 08_windows_security_events.spl
+# Project: P9 — Splunk SOC Dashboard
+# Purpose: Comprehensive audit of Windows endpoint security and system events.
+#          Tracks authentication, privilege assignments, security group mutations,
+#          new service installations, and Sysmon process telemetry.
+# Author: Natto Chakma
+# Telemetry: index=windows, index=sysmon
+# ==============================================================================
+
+(index=windows earliest=-7d) OR (index=sysmon earliest=-7d)
+| rex field=_raw "<EventID>(?<SysmonEventID>\d+)</EventID>"
+| rex field=_raw "<Data Name='Image'>(?<Image>[^<]+)</Data>"
+| rex field=_raw "<Data Name='CommandLine'>(?<CommandLine>[^<]*)</Data>"
+| rex field=_raw "<Data Name='ServiceName'>(?<ServiceName>[^<]+)</Data>"
+| eval UnifiedEventID=coalesce(EventCode, SysmonEventID)
+| eval EventSummary=case(
+    EventCode=4624, "Successful Account Logon (4624)",
+    EventCode=4625, "Failed Account Logon (4625)",
+    EventCode=4672, "Special Administrative Privileges Assigned (4672)",
+    EventCode IN (4728, 4732), "Member Added to Privileged Security Group (4728/4732)",
+    EventCode=7045, "New Windows Service Installed in System (7045)",
+    SysmonEventID=1, "Sysmon Process Creation (EventID 1)",
+    SysmonEventID=3, "Sysmon Network Connection (EventID 3)",
+    SysmonEventID=11, "Sysmon File Creation (EventID 11)",
+    SysmonEventID IN (12, 13), "Sysmon Registry Object/Value Modification (EventID 12/13)",
+    SysmonEventID=22, "Sysmon DNS Query (EventID 22)",
+    true(), "Other Windows Event (" . UnifiedEventID . ")"
+  )
+| eval SecurityTier=case(
+    EventCode IN (4728, 4732, 7045) OR match(CommandLine, "(?i)(certutil|mshta|psexec|-enc)"), "CRITICAL / HIGH",
+    EventCode IN (4625, 4672) OR SysmonEventID=22, "MEDIUM",
+    true(), "LOW / INFORMATIONAL"
+  )
+| stats 
+    count as event_count,
+    values(CommandLine) as sample_commands,
+    values(ServiceName) as sample_services,
+    earliest(_time) as first_seen,
+    latest(_time) as last_seen
+    by EventSummary, SecurityTier, host
+| eval first_seen=strftime(first_seen, "%Y-%m-%d %H:%M:%S"), last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")
+| sort - event_count

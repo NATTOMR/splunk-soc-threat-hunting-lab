@@ -1,0 +1,560 @@
+<dashboard version="1.1" theme="dark">
+  <label>P9 — Splunk SOC Operations Dashboard</label>
+  <description>Unified Enterprise Security Operations Center (SOC) Dashboard: Centralized tactical visibility across Authentication, Endpoint Security, Network Threats, Web Attacks, Brute-Force Activity, Alert Triage, and Investigation Timelines (Grounded in P1–P8 Telemetry).</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="time_tok" searchWhenChanged="true">
+      <label>Global Time Range</label>
+      <default>
+        <earliest>-7d@d</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+
+  <!-- ===================================================================== -->
+  <!-- SECTION 1: SOC OVERVIEW                                              -->
+  <!-- ===================================================================== -->
+  <row>
+    <panel>
+      <title>SECTION 1: SOC OVERVIEW — KPI METRICS</title>
+      <single>
+        <title>Total Security Events</title>
+        <search>
+          <query>
+            (index=windows) OR (index=sysmon) OR (index=linux_security) OR (index=web) OR (index=email) earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>30s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x006d9c","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Multi-Index Ingestion Total</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Authentication Events</title>
+        <search>
+          <query>
+            (index=windows EventCode IN (4624, 4625, 4672) earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=linux_security sourcetype=linux_secure ("Failed password" OR "Accepted") earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>30s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0x53a051"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Windows &amp; Linux Logons</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Threat Detection Events</title>
+        <search>
+          <query>
+            (index=windows earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=linux_security earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=web earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=email earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | eval is_threat=case(
+                EventCode=4625 OR match(_raw, "(?i)Failed password"), 1,
+                index="web" AND (status&gt;=400 OR match(_raw, "(?i)(union\s+select|&lt;script|\.\./|nikto|sqlmap)")), 1,
+                index="sysmon" AND (match(CommandLine, "(?i)(certutil|bitsadmin|mshta|-enc|bypass|psexec|whoami|schtasks)") OR EventID=22), 1,
+                EventCode IN (4728, 4732, 7045), 1,
+                index="linux_security" AND match(_raw, "(?i)(NOT in sudoers|authentication failure)"), 1,
+                index="email" AND match(_raw, "(?i)(urgent|password|wire transfer|\.xlsm|\.iso|\.exe)"), 1,
+                true(), 0
+              )
+            | where is_threat=1
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>30s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[10,50]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Active Rule Detections</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Network Connection Events</title>
+        <search>
+          <query>
+            index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=3
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>30s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x006d9c","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Sysmon EventID 3 Traffic</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Web Request &amp; Attack Volume</title>
+        <search>
+          <query>
+            index=web sourcetype=access_combined earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>30s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x006d9c","0x006d9c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Apache2 HTTP Events</option>
+      </single>
+    </panel>
+
+    <panel>
+      <single>
+        <title>Critical / High Severity Incidents</title>
+        <search>
+          <query>
+            (index=windows earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=linux_security earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=web earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | eval is_crit_high=case(
+                Logon_Type="9", 1,
+                match(CommandLine, "(?i)(-(enc|encodedcommand)\s+|mshta.*http|psexesvc)"), 1,
+                match(_raw, "(?i)(union\s+select.*from|&lt;script&gt;.*alert|\.iso|\.pdf\.exe)"), 1,
+                EventCode IN (4728, 4732), 1,
+                true(), 0
+              )
+            | where is_crit_high=1
+            | stats count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+          <refresh>30s</refresh>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+        <option name="underLabel">Immediate Action Required</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- ===================================================================== -->
+  <!-- SECTION 2: AUTHENTICATION MONITORING                                  -->
+  <!-- ===================================================================== -->
+  <row>
+    <panel>
+      <title>SECTION 2: AUTHENTICATION — Status Breakdown</title>
+      <chart>
+        <title>Failed vs. Successful Authentications</title>
+        <search>
+          <query>
+            (index=windows (EventCode=4624 OR EventCode=4625) earliest=$time_tok.earliest$ latest=$time_tok.latest$) 
+            OR (index=linux_security sourcetype=linux_secure ("Failed password" OR "Accepted") earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            | eval auth_status=case(
+                EventCode=4624, "Successful Windows",
+                EventCode=4625, "Failed Windows",
+                index="linux_security" AND match(_raw, "(?i)Accepted"), "Successful Linux SSH",
+                index="linux_security" AND match(_raw, "(?i)Failed password"), "Failed Linux SSH",
+                true(), "Other"
+              )
+            | stats count by auth_status
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.legend.placement">right</option>
+      </chart>
+    </panel>
+
+    <panel>
+      <title>SECTION 2: AUTHENTICATION — Authentication Velocity Timeline</title>
+      <chart>
+        <title>Logon Volume over Time (Success vs. Failure)</title>
+        <search>
+          <query>
+            (index=windows (EventCode=4624 OR EventCode=4625) earliest=$time_tok.earliest$ latest=$time_tok.latest$) 
+            OR (index=linux_security sourcetype=linux_secure ("Failed password" OR "Accepted") earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            | eval outcome=case(
+                EventCode=4624 OR match(_raw, "(?i)Accepted"), "Success",
+                EventCode=4625 OR match(_raw, "(?i)Failed password"), "Failure",
+                true(), "Other"
+              )
+            | timechart span=1h count by outcome
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <table>
+        <title>Top Targeted User Accounts (T1110 / T1078)</title>
+        <search>
+          <query>
+            (index=windows (EventCode=4624 OR EventCode=4625) earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            OR (index=linux_security sourcetype=linux_secure ("Failed password" OR "Accepted") earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            | rex field=_raw "Failed password for (?:invalid user )?(?&lt;linux_fail_user&gt;[^\s]+)"
+            | rex field=_raw "Accepted \w+ for (?&lt;linux_succ_user&gt;[^\s]+)"
+            | eval TargetAccount=lower(coalesce(TargetUserName, linux_fail_user, linux_succ_user, user, Account_Name))
+            | search isnotnull(TargetAccount) AND NOT TargetAccount IN ("*$", "anonymous logon", "system", "local service", "network service")
+            | eval is_fail=if(EventCode=4625 OR isnotnull(linux_fail_user), 1, 0)
+            | eval is_succ=if(EventCode=4624 OR isnotnull(linux_succ_user), 1, 0)
+            | stats sum(is_fail) as Failures, sum(is_succ) as Successes, values(host) as Hosts by TargetAccount
+            | sort - Failures, - Successes
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">5</option>
+      </table>
+    </panel>
+
+    <panel>
+      <table>
+        <title>Brute-Force &amp; Password Spray Activity (T1110)</title>
+        <search>
+          <query>
+            (index=windows EventCode=4625 earliest=$time_tok.earliest$ latest=$time_tok.latest$) 
+            OR (index=linux_security sourcetype=linux_secure "Failed password" earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            | rex field=_raw "Failed password for (?:invalid user )?(?&lt;linux_user&gt;[^\s]+) from (?&lt;linux_src_ip&gt;\d+\.\d+\.\d+\.\d+)"
+            | eval TargetUser=lower(coalesce(TargetUserName, linux_user, user, Account_Name))
+            | eval SourceIP=coalesce(IpAddress, linux_src_ip, SourceNetworkAddress, src_ip)
+            | search isnotnull(TargetUser) AND NOT TargetUser IN ("*$", "anonymous logon") AND isnotnull(SourceIP) AND NOT SourceIP IN ("127.0.0.1", "::1", "-")
+            | bin _time span=5m
+            | stats count as failure_count, dc(TargetUser) as distinct_users, values(TargetUser) as targeted_users by _time, SourceIP, host
+            | where failure_count&gt;=5 OR distinct_users&gt;=3
+            | eval attack_pattern=if(distinct_users&gt;=3, "Password Spraying (T1110.003)", "Targeted Brute-Force (T1110.001)")
+            | eval _time=strftime(_time, "%Y-%m-%d %H:%M:%S")
+            | sort - failure_count
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">5</option>
+      </table>
+    </panel>
+  </row>
+
+  <!-- ===================================================================== -->
+  <!-- SECTION 3: ENDPOINT SECURITY                                          -->
+  <!-- ===================================================================== -->
+  <row>
+    <panel>
+      <title>SECTION 3: ENDPOINT SECURITY — Windows Telemetry Distribution</title>
+      <chart>
+        <title>Windows EventCode &amp; Sysmon ID Activity</title>
+        <search>
+          <query>
+            (index=windows earliest=$time_tok.earliest$ latest=$time_tok.latest$) OR (index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            | rex field=_raw "&lt;EventID&gt;(?&lt;SysmonEventID&gt;\d+)&lt;/EventID&gt;"
+            | eval UnifiedID=case(
+                isnotnull(EventCode), "Win Event " . EventCode,
+                isnotnull(SysmonEventID), "Sysmon EID " . SysmonEventID,
+                true(), "Other"
+              )
+            | top limit=8 UnifiedID
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.legend.placement">none</option>
+      </chart>
+    </panel>
+
+    <panel>
+      <title>SECTION 3: ENDPOINT SECURITY — Suspicious Process &amp; LOLBin Activity</title>
+      <table>
+        <title>Suspicious CLI, LOLBins &amp; Obfuscated PowerShell (T1059 / T1218)</title>
+        <search>
+          <query>
+            index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=1
+            | rex field=_raw "&lt;Data Name='Image'&gt;(?&lt;Image&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='User'&gt;(?&lt;User&gt;[^&lt;]+)&lt;/Data&gt;"
+            | eval process_name=lower(replace(Image, ".*\\\\", ""))
+            | eval threat_finding=case(
+                match(CommandLine, "(?i)powershell.*-(e|en|enc|encodedcommand)\s+"), "CRITICAL: Obfuscated PowerShell Dropper (T1059.001)",
+                process_name="certutil.exe" AND match(CommandLine, "(?i)(-urlcache|-split)"), "HIGH: Certutil Remote Download (T1105 / LOLBin)",
+                process_name="bitsadmin.exe" AND match(CommandLine, "(?i)(/transfer|/create)"), "HIGH: Bitsadmin Ingress Staging (T1105 / LOLBin)",
+                match(CommandLine, "(?i)schtasks.*create"), "HIGH: Scheduled Task CLI Persistence (T1053.005)",
+                match(CommandLine, "(?i)(whoami.*priv|net\s+user)"), "MEDIUM: Discovery Reconnaissance Burst (T1082)",
+                true(), "NORMAL"
+              )
+            | where threat_finding!="NORMAL"
+            | stats count as Executions, values(CommandLine) as CommandLine, values(User) as User, latest(_time) as LastSeen by threat_finding, process_name
+            | eval LastSeen=strftime(LastSeen, "%Y-%m-%d %H:%M:%S")
+            | sort - Executions
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">5</option>
+      </table>
+    </panel>
+  </row>
+
+  <!-- ===================================================================== -->
+  <!-- SECTION 4: NETWORK SECURITY                                           -->
+  <!-- ===================================================================== -->
+  <row>
+    <panel>
+      <title>SECTION 4: NETWORK SECURITY — Traffic Volume</title>
+      <chart>
+        <title>Network Connections Over Time (Sysmon EventID 3)</title>
+        <search>
+          <query>
+            index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=3
+            | timechart span=1h count as Connections
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.legend.placement">none</option>
+      </chart>
+    </panel>
+
+    <panel>
+      <title>SECTION 4: NETWORK SECURITY — Suspicious Port Egress</title>
+      <table>
+        <title>Uncommon, Management &amp; Backdoor Ports (T1571 / T1071)</title>
+        <search>
+          <query>
+            index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | search EventID=3
+            | rex field=_raw "&lt;Data Name='Image'&gt;(?&lt;Image&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='DestinationIp'&gt;(?&lt;DestinationIp&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='DestinationPort'&gt;(?&lt;DestinationPort&gt;[^&lt;]+)&lt;/Data&gt;"
+            | eval risk=case(
+                DestinationPort IN ("4444", "1337", "31337", "5555"), "CRITICAL: Known Backdoor / Metasploit Port",
+                DestinationPort IN ("5985", "5986"), "HIGH: WinRM Management Traffic",
+                DestinationPort="3389", "MEDIUM: Remote Desktop Protocol (RDP)",
+                DestinationPort="445", "MEDIUM: Server Message Block (SMB)",
+                true(), "NORMAL"
+              )
+            | where risk!="NORMAL"
+            | eval binary=lower(replace(Image, ".*\\\\", ""))
+            | stats count as Connections, values(DestinationIp) as DestinationIPs, values(binary) as InitiatingBinaries by risk, DestinationPort
+            | sort - Connections
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">5</option>
+      </table>
+    </panel>
+  </row>
+
+  <!-- ===================================================================== -->
+  <!-- SECTION 5: WEB SECURITY                                               -->
+  <!-- ===================================================================== -->
+  <row>
+    <panel>
+      <title>SECTION 5: WEB SECURITY — Attack Categories</title>
+      <chart>
+        <title>Web Attacks by OWASP Top 10 Category</title>
+        <search>
+          <query>
+            index=web sourcetype=access_combined earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | eval attack_type=case(
+                match(uri_query, "(?i)(union(\s+|\/\*.*\*\/)+select|information_schema)"), "SQL Injection (SQLi)",
+                match(uri_query, "(?i)(&lt;script|javascript:|alert\()"), "Cross-Site Scripting (XSS)",
+                match(uri_path, "(?i)(\.\./|/etc/passwd)"), "Path / Directory Traversal",
+                match(useragent, "(?i)(nikto|sqlmap|dirbuster|nmap)"), "Automated Web Scanner",
+                status&gt;=500, "Internal Server Error (5xx)",
+                status=404, "Not Found (404 Recon)",
+                true(), "Normal Request"
+              )
+            | where attack_type!="Normal Request"
+            | top limit=6 attack_type
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.legend.placement">right</option>
+      </chart>
+    </panel>
+
+    <panel>
+      <title>SECTION 5: WEB SECURITY — HTTP Response Trends</title>
+      <chart>
+        <title>HTTP Status Code Trends (Error Spikes)</title>
+        <search>
+          <query>
+            index=web sourcetype=access_combined earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | eval status_tier=case(
+                status&gt;=200 AND status&lt;300, "2xx Success",
+                status&gt;=300 AND status&lt;400, "3xx Redirect",
+                status&gt;=400 AND status&lt;500, "4xx Client Error",
+                status&gt;=500, "5xx Server Error",
+                true(), "Other"
+              )
+            | timechart span=1h count by status_tier
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.legend.placement">bottom</option>
+      </chart>
+    </panel>
+  </row>
+
+  <!-- ===================================================================== -->
+  <!-- SECTION 6 &amp; 7: THREAT DETECTION &amp; ALERT SUMMARY                       -->
+  <!-- ===================================================================== -->
+  <row>
+    <panel>
+      <title>SECTION 6: THREAT DETECTION — Rule Catalog &amp; MITRE Mapping</title>
+      <table>
+        <title>Active Detection Rules &amp; ATT&amp;CK Mapping</title>
+        <search>
+          <query>
+            (index=windows) OR (index=sysmon) OR (index=linux_security) OR (index=web) OR (index=email) earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | eval detection=case(
+                match(uri_query, "(?i)(union(\s+|\/\*.*\*\/)+select)"), "DET-P6-01: SQL Injection (T1190)",
+                match(uri_query, "(?i)(&lt;script|javascript:)"), "DET-P6-02: XSS Injection (T1190)",
+                match(uri_path, "(?i)(\.\./|/etc/passwd)"), "DET-P6-03: Directory Traversal (T1083)",
+                match(CommandLine, "(?i)powershell.*-(e|enc)\s+"), "DET-P8-01: Obfuscated PowerShell (T1059.001)",
+                match(CommandLine, "(?i)(certutil.*-urlcache|bitsadmin.*(/transfer|/create))"), "DET-P8-02: LOLBin Ingress (T1105)",
+                match(CommandLine, "(?i)schtasks.*create") OR (EventID IN (12,13) AND match(_raw, "(?i)\\\\Run\\\\")), "DET-P8-03: Autostart Persistence (T1547.001)",
+                EventID=22 AND match(_raw, "(?i)duckdns\.org"), "DET-P8-04: Dynamic DNS C2 (T1071.004)",
+                EventCode=4625 OR match(_raw, "(?i)Failed password"), "DET-P4-01: Authentication Brute Force (T1110)",
+                true(), "NORMAL"
+              )
+            | where detection!="NORMAL"
+            | rex field=detection "^(?&lt;RuleID&gt;[^:]+):\s+(?&lt;DetectionName&gt;.*?)\s+\((?&lt;MITRE&gt;[^\)]+)\)$"
+            | stats count as TriggerCount, dc(host) as AffectedHosts by RuleID, DetectionName, MITRE
+            | sort - TriggerCount
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">6</option>
+      </table>
+    </panel>
+
+    <panel>
+      <title>SECTION 7: ALERT SUMMARY — Severity Breakdown</title>
+      <chart>
+        <title>Alert Severity Distribution</title>
+        <search>
+          <query>
+            (index=windows) OR (index=sysmon) OR (index=linux_security) OR (index=web) OR (index=email) earliest=$time_tok.earliest$ latest=$time_tok.latest$
+            | rex field=_raw "&lt;EventID&gt;(?&lt;EventID&gt;\d+)&lt;/EventID&gt;"
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | eval severity=case(
+                match(uri_query, "(?i)(union(\s+|\/\*.*\*\/)+select)") OR match(CommandLine, "(?i)-(e|enc)\s+[A-Za-z0-9+/=]{20,}") OR Logon_Type="9", "CRITICAL",
+                match(uri_query, "(?i)(&lt;script|\.\./)") OR match(CommandLine, "(?i)(certutil.*-urlcache|bitsadmin.*create|schtasks.*create)") OR EventID=3, "HIGH",
+                EventCode=4625 OR match(_raw, "(?i)Failed password") OR EventID=22, "MEDIUM",
+                true(), "NO_ALERT"
+              )
+            | where severity!="NO_ALERT"
+            | stats count by severity
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.legend.placement">right</option>
+      </chart>
+    </panel>
+  </row>
+
+  <!-- ===================================================================== -->
+  <!-- SECTION 8: INVESTIGATION TIMELINE                                     -->
+  <!-- ===================================================================== -->
+  <row>
+    <panel>
+      <title>SECTION 8: UNIFIED INVESTIGATION TIMELINE — Chronological Incident Stream</title>
+      <table>
+        <title>Chronological SOC Event Correlation Stream (Source IP, User, Activity, Severity, MITRE)</title>
+        <search>
+          <query>
+            (index=windows (EventCode=4624 OR EventCode=4625 OR EventCode=4672 OR EventCode=4728 OR EventCode=7045) earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            OR (index=sysmon earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            OR (index=linux_security earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            OR (index=web sourcetype=access_combined earliest=$time_tok.earliest$ latest=$time_tok.latest$)
+            | rex field=_raw "&lt;EventID&gt;(?&lt;SysmonEventID&gt;\d+)&lt;/EventID&gt;"
+            | rex field=_raw "&lt;Data Name='CommandLine'&gt;(?&lt;CommandLine&gt;[^&lt;]*)&lt;/Data&gt;"
+            | rex field=_raw "&lt;Data Name='SourceIp'&gt;(?&lt;sysmon_src_ip&gt;[^&lt;]+)&lt;/Data&gt;"
+            | rex field=_raw "from (?&lt;linux_src_ip&gt;\d+\.\d+\.\d+\.\d+)"
+            | rex field=_raw "Failed password for (?:invalid user )?(?&lt;linux_fail_user&gt;[^\s]+)"
+            | rex field=_raw "Accepted \w+ for (?&lt;linux_succ_user&gt;[^\s]+)"
+            | eval SourceIP=coalesce(clientip, IpAddress, sysmon_src_ip, linux_src_ip, SourceNetworkAddress, src_ip, "N/A")
+            | eval TargetAccount=lower(coalesce(TargetUserName, linux_fail_user, linux_succ_user, user, Account_Name, "N/A"))
+            | eval EventTriage=case(
+                match(uri_query, "(?i)(union(\s+|\/\*.*\*\/)+select)"), "Web: SQL Injection Attack (T1190)",
+                match(uri_query, "(?i)(&lt;script|javascript:)"), "Web: Cross-Site Scripting (T1190)",
+                match(uri_path, "(?i)(\.\./|/etc/passwd)"), "Web: Directory Traversal (T1083)",
+                match(useragent, "(?i)(nikto|sqlmap|nmap)"), "Recon: Automated Web Scanner (T1595.002)",
+                match(CommandLine, "(?i)powershell.*-(e|en|enc|encodedcommand)\s+"), "Endpoint: Obfuscated PowerShell (T1059.001)",
+                match(CommandLine, "(?i)(certutil.*-urlcache|bitsadmin.*create)"), "Endpoint: LOLBin Ingress Transfer (T1105)",
+                match(CommandLine, "(?i)schtasks.*create"), "Persistence: Scheduled Task Creation (T1053.005)",
+                SysmonEventID IN (12,13) AND match(_raw, "(?i)\\\\Run\\\\"), "Persistence: Registry Autostart Modification (T1547.001)",
+                SysmonEventID=22 AND match(_raw, "(?i)duckdns\.org"), "C2: Dynamic DNS Query Beacon (T1071.004)",
+                EventCode=4625, "Auth: Windows Logon Failure (T1110)",
+                isnotnull(linux_fail_user), "Auth: Linux SSH Logon Failure (T1110)",
+                EventCode=4624 AND Logon_Type="9", "PrivEsc: Pass-The-Hash / NewCredentials (T1550.002)",
+                EventCode IN (4728, 4732), "PrivEsc: Group Membership Alteration (T1098)",
+                true(), "NORMAL"
+              )
+            | where EventTriage!="NORMAL"
+            | eval Severity=case(
+                match(EventTriage, "(?i)(SQL Injection|Pass-The-Hash|Obfuscated PowerShell|Group Membership)"), "CRITICAL",
+                match(EventTriage, "(?i)(Cross-Site|Directory Traversal|LOLBin|Persistence)"), "HIGH",
+                true(), "MEDIUM"
+              )
+            | eval ActivityDetail=coalesce(CommandLine, uri_query, uri_path, _raw)
+            | table _time, Severity, EventTriage, SourceIP, TargetAccount, host, ActivityDetail
+            | eval _time=strftime(_time, "%Y-%m-%d %H:%M:%S")
+            | sort - _time
+          </query>
+          <earliest>$time_tok.earliest$</earliest>
+          <latest>$time_tok.latest$</latest>
+        </search>
+        <option name="count">10</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

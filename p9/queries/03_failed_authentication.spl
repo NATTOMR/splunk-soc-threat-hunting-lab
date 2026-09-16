@@ -1,0 +1,35 @@
+# ==============================================================================
+# SPL Query: 03_failed_authentication.spl
+# Project: P9 — Splunk SOC Dashboard
+# Purpose: Granular breakdown and triage of failed authentications across 
+#          Windows endpoints (EventCode 4625) and Linux servers (SSH auth.log).
+#          Surfaces attacker IPs, targeted usernames, and failure sub-codes.
+# Author: Natto Chakma
+# Telemetry: index=windows (EventCode 4625), index=linux_security (Failed password)
+# ==============================================================================
+
+(index=windows EventCode=4625 earliest=-7d) 
+OR (index=linux_security sourcetype=linux_secure "Failed password" earliest=-7d)
+| rex field=_raw "Failed password for (?:invalid user )?(?<linux_user>[^\s]+) from (?<linux_src_ip>\d+\.\d+\.\d+\.\d+)"
+| eval TargetUser=coalesce(TargetUserName, linux_user, user, Account_Name)
+| eval SourceIP=coalesce(IpAddress, linux_src_ip, SourceNetworkAddress, src_ip)
+| eval Platform=if(index="windows", "Windows Endpoint", "Linux Server")
+| eval FailureReason=case(
+    Sub_Status="0xc000006a", "Bad Password (STATUS_WRONG_PASSWORD)",
+    Sub_Status="0xc0000064", "Non-Existent User (STATUS_NO_SUCH_USER)",
+    Sub_Status="0xc0000234", "Account Locked Out (STATUS_ACCOUNT_LOCKED_OUT)",
+    Sub_Status="0xc0000072", "Account Disabled (STATUS_ACCOUNT_DISABLED)",
+    index="linux_security" AND match(_raw, "invalid user"), "Invalid/Non-Existent Linux User",
+    index="linux_security", "Invalid Password for Existing Linux User",
+    true(), "Other / Unspecified Failure"
+  )
+| search isnotnull(TargetUser) AND NOT TargetUser IN ("*$", "ANONYMOUS LOGON")
+| stats 
+    count as failure_count,
+    values(SourceIP) as source_ips,
+    values(FailureReason) as failure_reasons,
+    earliest(_time) as first_failure,
+    latest(_time) as last_failure
+    by TargetUser, Platform
+| eval first_failure=strftime(first_failure, "%Y-%m-%d %H:%M:%S"), last_failure=strftime(last_failure, "%Y-%m-%d %H:%M:%S")
+| sort - failure_count

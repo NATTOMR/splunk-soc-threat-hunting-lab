@@ -486,7 +486,7 @@ splunk-soc-threat-hunting-lab/
 │       ├── p2-01-windows11-sysmon-*.png        # Windows endpoint evidence
 │       ├── p2-17-splunk-web-login-*.png        # Splunk Web UI
 │       ├── p2-18-splunk-web-admin-*.png        # Admin dashboard
-│       └── p2-19-splunk-receiver-*.png         # Receiver port and firewall
+│       ├── p2-19-splunk-receiver-*.png         # Receiver port and firewall
 │
 ├── P3-Linux-Security-Monitoring/
 │   └── README.md                               # P3 project detail and status
@@ -503,8 +503,15 @@ splunk-soc-threat-hunting-lab/
 ├── P7-Phishing-Email-Investigation/
 │   └── README.md                               # P7 project detail and status
 │
-└── P8-MITRE-ATTCK-Threat-Hunting/
-    └── README.md                               # P8 project detail and status
+├── P8-MITRE-ATTCK-Threat-Hunting/
+│   └── README.md                               # P8 project detail and status
+│
+└── p9/
+    ├── README.md                               # P9 Splunk SOC Dashboard
+    ├── dashboards/                             # Production Simple XML dashboard & guide
+    ├── queries/                                # 14 Modular SPL threat-hunting queries
+    ├── docs/                                   # Dashboard design & analytical spec
+    └── screenshots/                            # Dashboard panels catalog
 ```
 
 ---
@@ -541,6 +548,7 @@ splunk-soc-threat-hunting-lab/
 | **Web attack detection** | Apache access log analysis, SQLi, XSS, Path Traversal, and Scanner detection — [Project P6](P6-Web-Attack-Detection/README.md) (**Complete**) |
 | **Phishing email investigation** | Email gateway telemetry, weaponized attachment triage, and whaling detection — [Project P7](P7-Phishing-Email-Investigation/README.md) (**Complete**) |
 | **MITRE ATT&CK threat hunting** | Hypothesis-driven hunting across ATT&CK tactics — [Project P8](P8-MITRE-ATTCK-Threat-Hunting/README.md) (**Complete**) |
+| **Unified SOC Dashboard** | Centralized multi-telemetry visualization & executive metrics — [Project P9](p9/README.md) (**Complete**) |
 | **Automated adversary emulation** | Atomic Red Team execution for detection validation |
 | **Sigma rule conversion** | Translate community Sigma rules to Splunk SPL |
 | **Threat intelligence enrichment** | VirusTotal / AbuseIPDB integration via Splunk lookups |
@@ -560,7 +568,7 @@ splunk-soc-threat-hunting-lab/
 | **P6** | [**Web Attack Detection with Splunk**](P6-Web-Attack-Detection/README.md) | ✅ Complete |
 | **P7** | [**Phishing Email Investigation with Splunk**](P7-Phishing-Email-Investigation/README.md) | ✅ Complete |
 | **P8** | [**MITRE ATT&CK Threat Hunting with Splunk**](P8-MITRE-ATTCK-Threat-Hunting/README.md) | ✅ Complete |
-| **P9** | Splunk SOC Dashboard | ⚪ Planned |
+| **P9** | [**Splunk SOC Dashboard**](p9/README.md) | ✅ Complete |
 | **P10** | Wazuh + Splunk SIEM Integration | ⚪ Planned |
 
 ---

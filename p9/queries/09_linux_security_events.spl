@@ -1,0 +1,33 @@
+# ==============================================================================
+# SPL Query: 09_linux_security_events.spl
+# Project: P9 — Splunk SOC Dashboard
+# Purpose: Comprehensive audit of Linux server security events (Ubuntu / ubuntu-p3).
+#          Triages SSH authentications, privileged sudo command executions,
+#          sudo security violations, and recurring crontab modifications.
+# Author: Natto Chakma
+# Telemetry: index=linux_security (auth.log, syslog, audit.log)
+# ==============================================================================
+
+index=linux_security earliest=-7d
+| rex field=_raw "(?<sudo_user>\w+)\s*:\s*TTY=(?<tty>[^\s]+)\s*;\s*PWD=(?<pwd>[^\s]+)\s*;\s*USER=(?<target_user>[^\s]+)\s*;\s*COMMAND=(?<sudo_command>.*)"
+| rex field=_raw "Failed password for (?:invalid user )?(?<fail_user>[^\s]+) from (?<fail_ip>\d+\.\d+\.\d+\.\d+)"
+| rex field=_raw "Accepted \w+ for (?<succ_user>[^\s]+) from (?<succ_ip>\d+\.\d+\.\d+\.\d+)"
+| eval LinuxEventType=case(
+    isnotnull(sudo_command) AND match(sudo_command, "(?i)(/bin/bash|/bin/sh|nc|python|vi|vim|find)\b"), "CRITICAL: Sudo Shell Spawn / GTFOBins Privilege Escalation (T1548.003)",
+    match(_raw, "(?i)(NOT in sudoers|incorrect password attempts)"), "HIGH: Unauthorized Sudo Privilege Escalation Attempt (T1548.003)",
+    isnotnull(sudo_command), "MEDIUM: Authorized Sudo Command Execution",
+    isnotnull(fail_user), "MEDIUM: SSH Authentication Failure (T1110)",
+    isnotnull(succ_user), "LOW: Successful SSH Authentication",
+    match(_raw, "(?i)(crontab.*edit|cron.*RELOAD|cron.*added)"), "MEDIUM: Crontab Persistence / Modification (T1053.003)",
+    true(), "Other Linux Security Event"
+  )
+| eval UserContext=coalesce(sudo_user, fail_user, succ_user, "System")
+| eval EventDetail=coalesce(sudo_command, "SSH from " . coalesce(fail_ip, succ_ip), _raw)
+| stats 
+    count as event_count,
+    values(EventDetail) as sample_activities,
+    earliest(_time) as first_seen,
+    latest(_time) as last_seen
+    by LinuxEventType, UserContext, host
+| eval first_seen=strftime(first_seen, "%Y-%m-%d %H:%M:%S"), last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")
+| sort - event_count

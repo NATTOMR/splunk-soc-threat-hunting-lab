@@ -1,0 +1,44 @@
+# ==============================================================================
+# SPL Query: 06_top_source_ips.spl
+# Project: P9 — Splunk SOC Dashboard
+# Purpose: Identifies and ranks top source IP addresses generating security 
+#          events, network connections, web requests, and authentication attempts.
+#          Correlates IP behavior across all monitored lab layers.
+# Author: Natto Chakma
+# Telemetry: index=windows, index=sysmon, index=linux_security, index=web, index=email
+# ==============================================================================
+
+(index=windows (EventCode=4624 OR EventCode=4625) earliest=-7d)
+OR (index=sysmon earliest=-7d)
+OR (index=linux_security sourcetype=linux_secure ("Failed password" OR "Accepted") earliest=-7d)
+OR (index=web sourcetype=access_combined earliest=-7d)
+OR (index=email sourcetype="postfix:syslog" earliest=-7d)
+| rex field=_raw "<EventID>(?<EventID>\d+)</EventID>"
+| rex field=_raw "<Data Name='SourceIp'>(?<sysmon_src_ip>[^<]+)</Data>"
+| rex field=_raw "from (?<linux_src_ip>\d+\.\d+\.\d+\.\d+)"
+| rex field=_raw "from \w+\[(?<postfix_src_ip>\d+\.\d+\.\d+\.\d+)\]"
+| eval SourceIP=coalesce(clientip, IpAddress, sysmon_src_ip, linux_src_ip, postfix_src_ip, SourceNetworkAddress, src_ip)
+| search isnotnull(SourceIP) AND NOT SourceIP IN ("127.0.0.1", "::1", "-", "0.0.0.0")
+| eval activity_domain=case(
+    index="web", "Web Access / Attacks",
+    index="email", "Email Gateway Traffic",
+    index="sysmon" AND EventID=3, "Network Connections (Sysmon)",
+    EventCode=4625 OR match(_raw, "(?i)Failed password"), "Authentication Failures",
+    EventCode=4624 OR match(_raw, "(?i)Accepted"), "Authentication Successes",
+    true(), "General Security Activity"
+  )
+| eval ip_reputation=case(
+    SourceIP="192.168.100.6", "KNOWN ADVERSARY: Kali Linux Attack Node",
+    match(SourceIP, "(?i)^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)"), "Internal Lab Network",
+    true(), "External / Public IP"
+  )
+| stats 
+    count as total_events,
+    dc(activity_domain) as distinct_domains_active,
+    values(activity_domain) as activity_types,
+    values(ip_reputation) as classification,
+    earliest(_time) as first_seen,
+    latest(_time) as last_seen
+    by SourceIP
+| eval first_seen=strftime(first_seen, "%Y-%m-%d %H:%M:%S"), last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")
+| sort - total_events

@@ -1,0 +1,38 @@
+# ==============================================================================
+# SPL Query: 07_top_targeted_accounts.spl
+# Project: P9 — Splunk SOC Dashboard
+# Purpose: Surfaces top corporate and system user identities targeted by 
+#          adversaries across Windows, Linux SSH, and Phishing Email vectors.
+#          Calculates attack ratio (failures vs successes) and flags high-risk accounts.
+# Author: Natto Chakma
+# Telemetry: index=windows, index=linux_security, index=email
+# ==============================================================================
+
+(index=windows (EventCode=4624 OR EventCode=4625) earliest=-7d)
+OR (index=linux_security sourcetype=linux_secure ("Failed password" OR "Accepted") earliest=-7d)
+OR (index=email sourcetype="postfix:syslog" earliest=-7d)
+| rex field=_raw "Failed password for (?:invalid user )?(?<linux_fail_user>[^\s]+)"
+| rex field=_raw "Accepted \w+ for (?<linux_succ_user>[^\s]+)"
+| rex field=_raw "header To: (?<email_recipient>.*?) from \w+\["
+| eval TargetAccount=lower(coalesce(TargetUserName, linux_fail_user, linux_succ_user, email_recipient, user, Account_Name))
+| eval TargetAccount=trim(TargetAccount, "<> \"'")
+| search isnotnull(TargetAccount) AND NOT TargetAccount IN ("*$", "anonymous logon", "system", "local service", "network service")
+| eval is_failure=if(EventCode=4625 OR isnotnull(linux_fail_user), 1, 0)
+| eval is_success=if(EventCode=4624 OR isnotnull(linux_succ_user), 1, 0)
+| eval is_email_phish=if(index="email", 1, 0)
+| stats 
+    sum(is_failure) as failed_attempts,
+    sum(is_success) as successful_logons,
+    sum(is_email_phish) as phishing_emails_received,
+    count as total_interactions,
+    values(host) as targeted_hosts,
+    latest(_time) as last_targeted
+    by TargetAccount
+| eval account_risk=case(
+    match(TargetAccount, "(?i)(admin|root|administrator|cfo|ceo)"), "CRITICAL: Executive / Privileged Account Targeted",
+    failed_attempts>=10 AND successful_logons>0, "HIGH: Potential Compromised Account (Brute-Force Followed by Success)",
+    failed_attempts>=5, "MEDIUM: Active Password Spray / Guessing Target",
+    true(), "LOW: Standard Operational Account"
+  )
+| eval last_targeted=strftime(last_targeted, "%Y-%m-%d %H:%M:%S")
+| sort - failed_attempts, - total_interactions
